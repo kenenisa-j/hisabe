@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" width="250" height="250">
+  <defs>
+    <clipPath id="circle-clip">
+      <circle cx="125" cy="125" r="115" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#circle-clip)">
+    <!-- Top Orange Section -->
+    <rect x="0" y="0" width="250" height="150" fill="#EF7D00" />
+    <!-- Bottom Deep Navy Section -->
+    <rect x="0" y="145" width="250" height="105" fill="#0B1B54" />
+    
+    <!-- White Wave Cutouts (Top Orange Area) -->
+    <path d="M -10 40 Q 60 10, 130 50 T 260 40" fill="none" stroke="#FFFFFF" stroke-width="12" />
+    <path d="M -10 95 Q 70 65, 140 105 T 260 90" fill="none" stroke="#FFFFFF" stroke-width="12" />
+
+    <!-- Divider White Wave between Orange and Navy -->
+    <path d="M -10 148 Q 75 125, 150 155 T 260 135" fill="none" stroke="#FFFFFF" stroke-width="14" />
+
+    <!-- White Wave inside Navy Area -->
+    <path d="M -10 195 Q 80 175, 160 205 T 260 185" fill="none" stroke="#FFFFFF" stroke-width="12" />
+  </g>
+</svg>

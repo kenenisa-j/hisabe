@@ -1,1 +1,87 @@
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="50%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Ethiopian Flag Gradients -->
+    <linearGradient id="ethiopiaGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+    <linearGradient id="ethiopiaGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+    <linearGradient id="ethiopiaRed" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#DC2626" />
+      <stop offset="100%" stop-color="#EF4444" />
+    </linearGradient>
+
+    <!-- Metallic Gold Accent -->
+    <linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="50%" stop-color="#EAB308" />
+      <stop offset="100%" stop-color="#CA8A04" />
+    </linearGradient>
+
+    <!-- Glow Effect -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Drop Shadow -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Container Shield / Rounded Rectangle -->
+  <rect x="24" y="24" width="464" height="464" rx="100" fill="url(#bgGrad)" stroke="url(#goldAccent)" stroke-width="4" filter="url(#shadow)"/>
+
+  <!-- Inner Glowing Ring -->
+  <rect x="40" y="40" width="432" height="432" rx="84" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="2"/>
+
+  <!-- Ethiopian Flag Dynamic Tri-Color Financial Bars (Growth Chart) -->
+  <g filter="url(#shadow)">
+    <!-- Green Bar (Base / Income) -->
+    <rect x="110" y="310" width="40" height="90" rx="12" fill="url(#ethiopiaGreen)" />
+    
+    <!-- Gold Bar (Savings / Growth) -->
+    <rect x="175" y="240" width="40" height="160" rx="12" fill="url(#ethiopiaGold)" />
+    
+    <!-- Red Accent Bar -->
+    <rect x="240" y="280" width="40" height="120" rx="12" fill="url(#ethiopiaRed)" />
+  </g>
+
+  <!-- Growth Trend Arrow Curve (Ethiopian Gold) -->
+  <path d="M 110 300 Q 200 220 380 140" fill="none" stroke="url(#goldAccent)" stroke-width="12" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M 345 135 L 385 135 L 385 175" fill="none" stroke="url(#goldAccent)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Stylized Ethiopic Ge'ez Character: ሂ (Hi for Hisabe / ሂሳብ) -->
+  <g filter="url(#shadow)">
+    <!-- Left Vertical Stem -->
+    <rect x="295" y="220" width="22" height="160" rx="11" fill="url(#goldAccent)" />
+    
+    <!-- Right Vertical Stem -->
+    <rect x="365" y="220" width="22" height="160" rx="11" fill="url(#goldAccent)" />
+    
+    <!-- Top Horizontal Crossbar -->
+    <rect x="295" y="220" width="92" height="22" rx="11" fill="url(#goldAccent)" />
+    
+    <!-- Middle Horizontal Crossbar for ሂ -->
+    <rect x="295" y="290" width="92" height="22" rx="11" fill="url(#goldAccent)" />
+  </g>
+
+  <!-- Central Star of Ethiopia / Financial Brilliance -->
+  <g transform="translate(256, 125)" opacity="0.95" filter="url(#glow)">
+    <polygon points="0,-24 7,-7 24,0 7,7 0,24 -7,7 -24,0 -7,-7" fill="url(#goldAccent)"/>
+  </g>
+
+  <!-- Subtitle Text / Ethiopian Finance Branding -->
+  <text x="256" y="445" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="#F8FAFC" text-anchor="middle" letter-spacing="4">HISABE • ሂሳብ</text>
+</svg>

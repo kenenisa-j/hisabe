@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" width="250" height="250">
+  <rect width="250" height="250" rx="40" fill="#0F172A" />
+  <!-- Golden Crown / Sun Emblem for Bank of Abyssinia -->
+  <circle cx="125" cy="100" r="55" fill="#F59E0B" />
+  <polygon points="125,55 137,85 168,85 143,103 153,133 125,115 97,133 107,103 82,85 113,85" fill="#FFFFFF" />
+  <!-- Text BOA -->
+  <text x="125" y="195" text-anchor="middle" fill="#F59E0B" font-family="Arial, sans-serif" font-weight="900" font-size="28" letter-spacing="3">ABYSSINIA</text>
+  <text x="125" y="218" text-anchor="middle" fill="#94A3B8" font-family="Arial, sans-serif" font-weight="700" font-size="11" letter-spacing="4">BANK OF ABYSSINIA</text>
+</svg>
