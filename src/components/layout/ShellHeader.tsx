@@ -5,6 +5,7 @@ import { Menu, Search } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { NotificationPopover } from "@/components/notifications/notification-popover";
+import { UserGuideModal } from "@/components/guide/user-guide-modal";
 
 interface ShellHeaderProps {
     onMobileMenuOpen: () => void;
@@ -55,7 +56,8 @@ export function ShellHeader({ onMobileMenuOpen }: ShellHeaderProps) {
             </div>
 
             {/* Right section: Action controls */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
+                <UserGuideModal />
                 <NotificationPopover />
 
                 {/* User Profile Avatar via Clerk */}
