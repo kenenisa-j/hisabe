@@ -190,7 +190,9 @@ export function CreateRecurringModal({ accounts, categories }: CreateRecurringMo
                                 onValueChange={(val) => form.setValue('accountId', val || '')}
                             >
                                 <SelectTrigger className="bg-slate-950 border-slate-800 text-xs text-white">
-                                    <SelectValue placeholder="Account" />
+                                    <SelectValue placeholder="Account">
+                                        {accounts.find((a) => a.id === selectedAccountId)?.name || 'Account'}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-white">
                                     {accounts.map((a) => (
@@ -209,7 +211,9 @@ export function CreateRecurringModal({ accounts, categories }: CreateRecurringMo
                                 onValueChange={(val) => form.setValue('categoryId', val || '')}
                             >
                                 <SelectTrigger className="bg-slate-950 border-slate-800 text-xs text-white">
-                                    <SelectValue placeholder="Category" />
+                                    <SelectValue placeholder="Category">
+                                        {filteredCategories.find((c) => c.id === selectedCategoryId)?.name || 'Category'}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-white">
                                     {filteredCategories.map((c) => (

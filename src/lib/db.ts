@@ -44,16 +44,21 @@ async function executeWithRetry<T>(
  * Resilient Neon SQL instance with automatic retry mechanism for serverless cold starts.
  */
 function wrappedSql(strings: TemplateStringsArray, ...values: any[]) {
-    return executeWithRetry(() => rawSql(strings, ...values))
+    return rawSql(strings, ...values)
 }
 
 export const sql = new Proxy(wrappedSql, {
     get(target, prop, receiver) {
+        if (prop === 'transaction') {
+            return (arg: any, opts?: any) => {
+                return executeWithRetry(() => rawSql.transaction(arg, opts))
+            }
+        }
         const val = Reflect.get(rawSql, prop, receiver)
         if (typeof val === 'function') {
             return (...args: any[]) =>
                 executeWithRetry(() => val.apply(rawSql, args))
         }
-        return val
+        return val;
     },
 }) as typeof rawSql

@@ -97,24 +97,24 @@ export function ReportDateFilter({ initialStartDate, initialEndDate }: ReportFil
             </div>
 
             {/* Custom Picker */}
-            <form onSubmit={handleCustomApply} className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+            <form onSubmit={handleCustomApply} className="flex flex-wrap items-center gap-2 max-w-full">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 max-w-full">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                     <Input
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="h-8 w-32 border-slate-800 bg-slate-950 text-xs text-white"
+                        className="h-8 w-[125px] min-w-0 border-slate-800 bg-slate-950 text-xs text-white p-1"
                     />
-                    <span>to</span>
+                    <span className="text-slate-400 text-xs">to</span>
                     <Input
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="h-8 w-32 border-slate-800 bg-slate-950 text-xs text-white"
+                        className="h-8 w-[125px] min-w-0 border-slate-800 bg-slate-950 text-xs text-white p-1"
                     />
                 </div>
-                <Button type="submit" size="sm" className="h-8 bg-blue-600 hover:bg-blue-500 text-white text-xs gap-1">
+                <Button type="submit" size="sm" className="h-8 bg-blue-600 hover:bg-blue-500 text-white text-xs gap-1 shrink-0">
                     <Filter className="h-3 w-3" /> Apply
                 </Button>
             </form>

@@ -104,7 +104,9 @@ export function DepositModal({ goal, accounts, open, onOpenChange }: DepositModa
                             onValueChange={(val) => form.setValue('accountId', val || '')}
                         >
                             <SelectTrigger className="bg-slate-950 border-slate-800 text-xs text-white">
-                                <SelectValue placeholder="Select Account" />
+                                <SelectValue placeholder="Select Account">
+                                    {accounts.find((a) => a.id === selectedAccountId)?.name || 'Select Account'}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-white">
                                 {accounts.map((a) => (

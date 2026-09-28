@@ -157,7 +157,9 @@ export function ImportCSVModal({ accounts }: { accounts: AccountOption[] }) {
                             <label className="text-slate-400 mb-1 block">Target Destination Account</label>
                             <Select value={selectedAccount} onValueChange={(val) => setSelectedAccount(val || '')}>
                                 <SelectTrigger className="border-slate-800 bg-slate-900 text-xs">
-                                    <SelectValue placeholder="Select Account" />
+                                    <SelectValue placeholder="Select Account">
+                                        {accounts.find((acc) => acc.id === selectedAccount)?.name || 'Select Account'}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-white">
                                     {accounts.map((acc) => (

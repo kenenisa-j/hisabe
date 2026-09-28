@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Debt, recordDebtRepayment, settleDebtInFull } from '@/actions/debt-actions'
 import { formatCurrency } from '@/lib/utils'
 
@@ -34,6 +34,13 @@ export function RepaymentModal({ debt, accounts }: RepaymentModalProps) {
     const [accountId, setAccountId] = useState(accounts[0]?.id || '')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+
+    useEffect(() => {
+        if (open) {
+            setAmount(debt.remainingAmount.toString())
+            setError('')
+        }
+    }, [open, debt.remainingAmount])
 
     const handleRepay = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -115,7 +122,9 @@ export function RepaymentModal({ debt, accounts }: RepaymentModalProps) {
                         <Label className="text-xs text-slate-300">Target Payment Account</Label>
                         <Select value={accountId} onValueChange={(val) => setAccountId(val || '')}>
                             <SelectTrigger className="bg-slate-950 border-slate-800 text-xs text-white">
-                                <SelectValue placeholder="Select Account" />
+                                <SelectValue placeholder="Select Account">
+                                    {accounts.find((acc) => acc.id === accountId)?.name || 'Select Account'}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-white">
                                 {accounts.map((acc) => (
