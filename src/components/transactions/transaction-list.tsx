@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Transaction, Currency } from '@/types'
 import { formatCurrency, formatTransactionGroupHeader } from '@/lib/utils'
+import { useUserSettings } from '@/providers/user-settings-provider'
 import { CategoryIcon } from '@/components/categories/category-icon'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -38,6 +39,7 @@ export function TransactionList({
     accounts,
     categories,
 }: TransactionListProps) {
+    const { settings } = useUserSettings()
     // Filter States
     const [search, setSearch] = useState('')
     const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -313,7 +315,7 @@ export function TransactionList({
                             <div key={dateKey} className="space-y-2">
                                 <div className="flex items-center justify-between px-1">
                                     <h3 className="text-sm font-semibold text-slate-400">
-                                        {formatTransactionGroupHeader(dateKey)}
+                                        {formatTransactionGroupHeader(dateKey, settings.calendar_type)}
                                     </h3>
                                     {dayTotalEtb !== 0 && (
                                         <span className={`text-xs font-medium ${dayTotalEtb > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>

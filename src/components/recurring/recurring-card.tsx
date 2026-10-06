@@ -6,7 +6,8 @@ import {
     executeRecurringTransaction,
     toggleRecurringActive,
 } from '@/actions/recurring-actions'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
+import { useUserSettings } from '@/providers/user-settings-provider'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -17,6 +18,7 @@ interface RecurringCardProps {
 }
 
 export function RecurringCard({ item }: RecurringCardProps) {
+    const { formatDateDisplay } = useUserSettings()
     const [loading, setLoading] = useState(false)
     const [executed, setExecuted] = useState(false)
 
@@ -106,7 +108,7 @@ export function RecurringCard({ item }: RecurringCardProps) {
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-800/80">
                     <div className="flex items-center gap-2 text-xs text-slate-400">
                         <span>Next Due:</span>
-                        <span className="font-medium text-slate-200">{formatDate(item.nextDueDate)}</span>
+                        <span className="font-medium text-slate-200">{formatDateDisplay(item.nextDueDate).main}</span>
                         {item.autoRecord && (
                             <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-400 border border-blue-500/20">
                                 Auto

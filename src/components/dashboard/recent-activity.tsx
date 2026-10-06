@@ -1,7 +1,10 @@
+'use client'
+
 import Link from 'next/link'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowUpRight, ArrowDownRight, ArrowLeftRight, ChevronRight } from 'lucide-react'
+import { useUserSettings } from '@/providers/user-settings-provider'
 
 export interface RecentTransaction {
     id: string
@@ -18,6 +21,7 @@ interface RecentActivityProps {
 }
 
 export function RecentActivity({ transactions }: RecentActivityProps) {
+    const { formatDateDisplay } = useUserSettings()
     return (
         <Card className="border-slate-800 bg-slate-900 text-white">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -76,7 +80,7 @@ export function RecentActivity({ transactions }: RecentActivityProps) {
                                         {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}
                                         {formatCurrency(tx.amountEtb, 'ETB')}
                                     </p>
-                                    <p className="text-[10px] text-slate-500">{formatDate(tx.date)}</p>
+                                    <p className="text-[10px] text-slate-500">{formatDateDisplay(tx.date).main}</p>
                                 </div>
                             </div>
                         ))}

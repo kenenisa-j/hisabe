@@ -65,3 +65,5 @@ export interface Transfer {
     from_account_name?: string
     to_account_name?: string
 }
+
+export * from './settings'

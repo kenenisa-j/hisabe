@@ -9,6 +9,7 @@ export interface CategoryItem {
     name: string
     type: 'income' | 'expense'
     icon?: string | null
+    color?: string | null
     is_system?: boolean
 }
 
@@ -136,7 +137,7 @@ export async function getCategories(type?: 'income' | 'expense'): Promise<Catego
 
     if (type) {
         rows = await sql`
-            SELECT id, name, type, icon, is_system
+            SELECT id, name, type, icon, color, is_system
             FROM categories
             WHERE (user_id = ${userId} OR user_id IS NULL)
               AND type = ${type}
@@ -145,7 +146,7 @@ export async function getCategories(type?: 'income' | 'expense'): Promise<Catego
         `
     } else {
         rows = await sql`
-            SELECT id, name, type, icon, is_system
+            SELECT id, name, type, icon, color, is_system
             FROM categories
             WHERE (user_id = ${userId} OR user_id IS NULL)
               AND LOWER(name) <> 'transfer'
@@ -158,7 +159,7 @@ export async function getCategories(type?: 'income' | 'expense'): Promise<Catego
     const uniqueCategories: CategoryItem[] = []
 
     for (const r of rows) {
-        const item = r as { id: string; name: string; type: string; icon: string | null; is_system?: boolean }
+        const item = r as { id: string; name: string; type: string; icon: string | null; color?: string | null; is_system?: boolean }
         const normalized = item.name.trim().toLowerCase()
         if (!seenNames.has(normalized)) {
             seenNames.add(normalized)
@@ -167,6 +168,7 @@ export async function getCategories(type?: 'income' | 'expense'): Promise<Catego
                 name: item.name,
                 type: item.type as 'income' | 'expense',
                 icon: item.icon,
+                color: item.color || '#3b82f6',
                 is_system: item.is_system ?? false,
             })
         }
@@ -178,7 +180,7 @@ export async function getCategories(type?: 'income' | 'expense'): Promise<Catego
 /**
  * Create a new custom expense or income category
  */
-export async function createCategory(name: string, type: 'income' | 'expense' = 'expense') {
+export async function createCategory(name: string, type: 'income' | 'expense' = 'expense', icon?: string, color?: string) {
     const userId = await getAuthenticatedUser()
     if (!userId) throw new Error('Unauthorized')
 
@@ -199,19 +201,69 @@ export async function createCategory(name: string, type: 'income' | 'expense' = 
         return { success: true, id: existing[0].id, name: existing[0].name }
     }
 
-    const icon = pickCategoryIcon(trimmed)
+    const categoryIcon = icon || pickCategoryIcon(trimmed)
+    const categoryColor = color || '#3b82f6'
 
     const [inserted] = await sql`
-        INSERT INTO categories (user_id, name, type, icon, is_system)
-        VALUES (${userId}, ${trimmed}, ${type}, ${icon}, FALSE)
-        RETURNING id, name, icon
+        INSERT INTO categories (user_id, name, type, icon, color, is_system)
+        VALUES (${userId}, ${trimmed}, ${type}, ${categoryIcon}, ${categoryColor}, FALSE)
+        RETURNING id, name, icon, color
     `
 
     revalidatePath('/budgets')
     revalidatePath('/transactions')
     revalidatePath('/dashboard')
+    revalidatePath('/settings')
 
-    return { success: true, id: inserted.id, name: inserted.name, icon: inserted.icon }
+    return { success: true, id: inserted.id, name: inserted.name, icon: inserted.icon, color: inserted.color }
+}
+
+/**
+ * Update an existing category
+ */
+export async function updateCategory(
+    id: string,
+    data: { name?: string; type?: 'income' | 'expense'; icon?: string; color?: string }
+) {
+    const userId = await getAuthenticatedUser()
+    if (!userId) throw new Error('Unauthorized')
+
+    await sql`
+        UPDATE categories
+        SET 
+            name = COALESCE(${data.name ?? null}, name),
+            type = COALESCE(${data.type ?? null}, type),
+            icon = COALESCE(${data.icon ?? null}, icon),
+            color = COALESCE(${data.color ?? null}, color)
+        WHERE id = ${id} AND (user_id = ${userId} OR user_id IS NULL)
+    `
+
+    revalidatePath('/budgets')
+    revalidatePath('/transactions')
+    revalidatePath('/dashboard')
+    revalidatePath('/settings')
+
+    return { success: true }
+}
+
+/**
+ * Delete a category
+ */
+export async function deleteCategory(id: string) {
+    const userId = await getAuthenticatedUser()
+    if (!userId) throw new Error('Unauthorized')
+
+    await sql`
+        DELETE FROM categories
+        WHERE id = ${id} AND user_id = ${userId} AND is_system = FALSE
+    `
+
+    revalidatePath('/budgets')
+    revalidatePath('/transactions')
+    revalidatePath('/dashboard')
+    revalidatePath('/settings')
+
+    return { success: true }
 }
 
 export async function getCategoryExpenseBreakdown(): Promise<CategoryBreakdownPoint[]> {

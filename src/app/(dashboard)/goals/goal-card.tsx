@@ -1,7 +1,8 @@
 'use client'
 
 import { SavingsGoalProgress, deleteSavingsGoal } from '@/actions/savings-goal-actions'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
+import { useUserSettings } from '@/providers/user-settings-provider'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Trophy, Clock, PlusCircle, Trash2, Sparkles } from 'lucide-react'
@@ -12,6 +13,7 @@ interface GoalCardProps {
 }
 
 export function GoalCard({ goal, onDeposit }: GoalCardProps) {
+    const { formatDateDisplay } = useUserSettings()
     const {
         id,
         name,
@@ -121,8 +123,8 @@ export function GoalCard({ goal, onDeposit }: GoalCardProps) {
                             {isCompleted
                                 ? 'Completed'
                                 : daysRemaining > 0
-                                    ? `${daysRemaining} days left (${formatDate(targetDate)})`
-                                    : `Target date passed (${formatDate(targetDate)})`}
+                                    ? `${daysRemaining} days left (${formatDateDisplay(targetDate).main})`
+                                    : `Target date passed (${formatDateDisplay(targetDate).main})`}
                         </span>
                     </div>
 

@@ -39,7 +39,7 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
+      <html lang="en" className="theme-light" suppressHydrationWarning>
         <body className={inter.className} suppressHydrationWarning>{children}</body>
       </html>
     </ClerkProvider>

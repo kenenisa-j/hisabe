@@ -1,7 +1,8 @@
 'use client'
 
 import { Debt, deleteDebt } from '@/actions/debt-actions'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
+import { useUserSettings } from '@/providers/user-settings-provider'
 import { RepaymentModal } from '@/components/debts/repayment-modal'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,7 @@ interface DebtCardProps {
 }
 
 export function DebtCard({ debt, accounts }: DebtCardProps) {
+    const { formatDateDisplay } = useUserSettings()
     const isOwedByMe = debt.type === 'owed_by_me'
     const progressPercent = Math.min(100, Math.round((debt.paidAmount / debt.amount) * 100))
 
@@ -75,7 +77,7 @@ export function DebtCard({ debt, accounts }: DebtCardProps) {
                         {debt.dueDate ? (
                             <>
                                 <Calendar className="h-3 w-3 text-slate-400" />
-                                <span>Due: {formatDate(debt.dueDate)}</span>
+                                <span>Due: {formatDateDisplay(debt.dueDate).main}</span>
                             </>
                         ) : (
                             <span className="text-slate-400">No due date</span>

@@ -128,3 +128,295 @@
     @apply font-sans;
   }
 }
+
+/* ============================================================
+   HISABE SIGNATURE THEMES
+   Applied via root class by UserSettingsProvider.
+   "hisabe-classic" mirrors the current live UI exactly.
+   ============================================================ */
+
+/* ── 1. HISABE CLASSIC (Signature dark slate + emerald — DEFAULT) ── */
+.theme-hisabe-classic {
+  --background: #020617;       /* slate-950 */
+  --foreground: #f1f5f9;       /* slate-100 */
+  --card: #0f172a;             /* slate-900 */
+  --card-foreground: #f1f5f9;
+  --popover: #0f172a;
+  --popover-foreground: #f1f5f9;
+  --primary: #10b981;          /* emerald-500 */
+  --primary-foreground: #f0fdf4;
+  --secondary: #1e293b;        /* slate-800 */
+  --secondary-foreground: #cbd5e1;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8; /* slate-400 */
+  --accent: #0f172a;
+  --accent-foreground: #10b981;
+  --destructive: #ef4444;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #10b981;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #f0fdf4;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #1e293b;
+}
+
+/* ── 2. PURE DARK (Neutral dark — no green accent) ── */
+.theme-dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* ── 3. LIGHT CLASSIC (Clean white — DEFAULT) ── */
+.theme-light {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #10b981;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1e293b;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #10b981;
+  --destructive: #ef4444;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #10b981;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #10b981;
+}
+
+/* ── 3b. LIGHT EMERALD (Mint nature light) ── */
+.theme-light-emerald {
+  --background: #f0fdf4;
+  --foreground: #064e3b;
+  --card: #ffffff;
+  --card-foreground: #064e3b;
+  --popover: #ffffff;
+  --popover-foreground: #064e3b;
+  --primary: #059669;
+  --primary-foreground: #ffffff;
+  --secondary: #dcfce7;
+  --secondary-foreground: #065f46;
+  --muted: #e6f4ea;
+  --muted-foreground: #047857;
+  --accent: #dcfce7;
+  --accent-foreground: #059669;
+  --destructive: #ef4444;
+  --border: #bbf7d0;
+  --input: #bbf7d0;
+  --ring: #059669;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #064e3b;
+  --sidebar-primary: #059669;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #dcfce7;
+  --sidebar-accent-foreground: #064e3b;
+  --sidebar-border: #bbf7d0;
+  --sidebar-ring: #059669;
+}
+
+/* ── 3c. LIGHT BLUE (Ocean mist light) ── */
+.theme-light-blue {
+  --background: #f0f9ff;
+  --foreground: #0c4a6e;
+  --card: #ffffff;
+  --card-foreground: #0c4a6e;
+  --popover: #ffffff;
+  --popover-foreground: #0c4a6e;
+  --primary: #0284c7;
+  --primary-foreground: #ffffff;
+  --secondary: #e0f2fe;
+  --secondary-foreground: #075985;
+  --muted: #e0f2fe;
+  --muted-foreground: #0369a1;
+  --accent: #e0f2fe;
+  --accent-foreground: #0284c7;
+  --destructive: #ef4444;
+  --border: #bae6fd;
+  --input: #bae6fd;
+  --ring: #0284c7;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0c4a6e;
+  --sidebar-primary: #0284c7;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e0f2fe;
+  --sidebar-accent-foreground: #0c4a6e;
+  --sidebar-border: #bae6fd;
+  --sidebar-ring: #0284c7;
+}
+
+/* ── 3d. LIGHT AMBER (Warm gold light) ── */
+.theme-light-amber {
+  --background: #fffbeb;
+  --foreground: #78350f;
+  --card: #ffffff;
+  --card-foreground: #78350f;
+  --popover: #ffffff;
+  --popover-foreground: #78350f;
+  --primary: #d97706;
+  --primary-foreground: #ffffff;
+  --secondary: #fef3c7;
+  --secondary-foreground: #92400e;
+  --muted: #fef3c7;
+  --muted-foreground: #b45309;
+  --accent: #fef3c7;
+  --accent-foreground: #d97706;
+  --destructive: #ef4444;
+  --border: #fde68a;
+  --input: #fde68a;
+  --ring: #d97706;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #78350f;
+  --sidebar-primary: #d97706;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fef3c7;
+  --sidebar-accent-foreground: #78350f;
+  --sidebar-border: #fde68a;
+  --sidebar-ring: #d97706;
+}
+
+/* ── 3e. LIGHT PURPLE (Lavender blossom light) ── */
+.theme-light-purple {
+  --background: #faf5ff;
+  --foreground: #581c87;
+  --card: #ffffff;
+  --card-foreground: #581c87;
+  --popover: #ffffff;
+  --popover-foreground: #581c87;
+  --primary: #9333ea;
+  --primary-foreground: #ffffff;
+  --secondary: #f3e8ff;
+  --secondary-foreground: #6b21a8;
+  --muted: #f3e8ff;
+  --muted-foreground: #7e22ce;
+  --accent: #f3e8ff;
+  --accent-foreground: #9333ea;
+  --destructive: #ef4444;
+  --border: #e9d5ff;
+  --input: #e9d5ff;
+  --ring: #9333ea;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #581c87;
+  --sidebar-primary: #9333ea;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f3e8ff;
+  --sidebar-accent-foreground: #581c87;
+  --sidebar-border: #e9d5ff;
+  --sidebar-ring: #9333ea;
+}
+
+/* ── 4. EMERALD FOREST (Vivid deep green — Ethiopian nature) ── */
+.theme-emerald {
+  --background: #022c22;       /* deep forest green */
+  --foreground: #d1fae5;
+  --card: #064e3b;
+  --card-foreground: #d1fae5;
+  --popover: #064e3b;
+  --popover-foreground: #d1fae5;
+  --primary: #34d399;          /* emerald-400 */
+  --primary-foreground: #022c22;
+  --secondary: #065f46;
+  --secondary-foreground: #a7f3d0;
+  --muted: #065f46;
+  --muted-foreground: #6ee7b7;
+  --accent: #064e3b;
+  --accent-foreground: #34d399;
+  --destructive: #f87171;
+  --border: #065f46;
+  --input: #065f46;
+  --ring: #34d399;
+  --sidebar: #064e3b;
+  --sidebar-foreground: #d1fae5;
+  --sidebar-primary: #34d399;
+  --sidebar-primary-foreground: #022c22;
+  --sidebar-accent: #065f46;
+  --sidebar-accent-foreground: #d1fae5;
+  --sidebar-border: #065f46;
+  --sidebar-ring: #34d399;
+}
+
+/* ── 5. MIDNIGHT VIOLET (Royal purple — premium dark) ── */
+.theme-violet {
+  --background: #0d0a1f;
+  --foreground: #ede9fe;
+  --card: #1a1140;
+  --card-foreground: #ede9fe;
+  --popover: #1a1140;
+  --popover-foreground: #ede9fe;
+  --primary: #a78bfa;          /* violet-400 */
+  --primary-foreground: #0d0a1f;
+  --secondary: #2e1f6e;
+  --secondary-foreground: #c4b5fd;
+  --muted: #2e1f6e;
+  --muted-foreground: #a78bfa;
+  --accent: #1a1140;
+  --accent-foreground: #a78bfa;
+  --destructive: #f87171;
+  --border: #2e1f6e;
+  --input: #2e1f6e;
+  --ring: #a78bfa;
+  --sidebar: #1a1140;
+  --sidebar-foreground: #ede9fe;
+  --sidebar-primary: #a78bfa;
+  --sidebar-primary-foreground: #0d0a1f;
+  --sidebar-accent: #2e1f6e;
+  --sidebar-accent-foreground: #ede9fe;
+  --sidebar-border: #2e1f6e;
+  --sidebar-ring: #a78bfa;
+}
+
+/* ============================================================
+   FONT SIZE UTILITIES
+   ============================================================ */
+html.font-small  { font-size: 13px; }
+html.font-medium { font-size: 15px; }
+html.font-large  { font-size: 17px; }
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+html.motion-reduce *,
+html.motion-reduce *::before,
+html.motion-reduce *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}

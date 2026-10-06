@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Account, Transaction } from '@/types'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
+import { useUserSettings } from '@/providers/user-settings-provider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +21,7 @@ interface AccountActivityFeedProps {
 }
 
 export function AccountActivityFeed({ account, transactions }: AccountActivityFeedProps) {
+    const { formatDateDisplay } = useUserSettings()
     const [search, setSearch] = useState('')
     const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense' | 'transfer'>('all')
 
@@ -101,7 +103,7 @@ export function AccountActivityFeed({ account, transactions }: AccountActivityFe
                                                 {tx.description || tx.category_name || 'Uncategorized'}
                                             </p>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-xs text-slate-400">{formatDate(tx.transaction_date)}</span>
+                                                <span className="text-xs text-slate-400">{formatDateDisplay(tx.transaction_date).main}</span>
                                                 {tx.category_name && (
                                                     <Badge variant="outline" className="text-[10px] border-slate-800 text-slate-400">
                                                         {tx.category_name}
