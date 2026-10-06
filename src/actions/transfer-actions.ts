@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { sql } from '@/lib/db'
+import { sql, sqlRaw } from '@/lib/db'
 import { ensureTablesExist } from '@/lib/db/init-db'
 import { enforceAuth, verifyAccountOwnership } from '@/lib/security-guards'
 
@@ -38,14 +38,14 @@ export async function createTransfer(input: CreateTransferInput) {
 
     try {
         const dateStr = transferDate
-            ? new Date(transferDate).toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0]
+            ? new Date(transferDate).toISOString()
+            : new Date().toISOString()
 
         // Atomically record transfer and adjust balances for both source and destination accounts
         const totalDeduction = amount + (fee || 0)
 
         await sql.transaction([
-            sql`
+            sqlRaw`
                 INSERT INTO transfers (
                     user_id,
                     from_account_id,
@@ -62,16 +62,16 @@ export async function createTransfer(input: CreateTransferInput) {
                     ${amount},
                     ${fee},
                     ${description?.trim() || null},
-                    ${dateStr}::date,
+                    ${dateStr}::timestamptz,
                     NOW()
                 )
             `,
-            sql`
+            sqlRaw`
                 UPDATE accounts
                 SET balance = balance - ${totalDeduction}, updated_at = NOW()
                 WHERE id = ${fromAccountId} AND user_id = ${userId}
             `,
-            sql`
+            sqlRaw`
                 UPDATE accounts
                 SET balance = balance + ${amount}, updated_at = NOW()
                 WHERE id = ${toAccountId} AND user_id = ${userId}

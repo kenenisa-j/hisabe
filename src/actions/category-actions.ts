@@ -58,6 +58,32 @@ const CATEGORY_COLORS = [
 ]
 
 /**
+ * Pick a smart icon for a category based on its name
+ */
+function pickCategoryIcon(name: string): string {
+    const n = name.toLowerCase()
+    if (n.includes('food') || n.includes('dining') || n.includes('restaurant') || n.includes('meal') || n.includes('lunch') || n.includes('dinner') || n.includes('breakfast')) return 'utensils'
+    if (n.includes('grocery') || n.includes('groceries') || n.includes('supermarket') || n.includes('market')) return 'shopping-bag'
+    if (n.includes('transport') || n.includes('fuel') || n.includes('car') || n.includes('taxi') || n.includes('ride') || n.includes('vehicle')) return 'car'
+    if (n.includes('house') || n.includes('rent') || n.includes('home') || n.includes('housing') || n.includes('apartment')) return 'home'
+    if (n.includes('util') || n.includes('bill') || n.includes('electric') || n.includes('water') || n.includes('internet') || n.includes('phone')) return 'zap'
+    if (n.includes('health') || n.includes('medical') || n.includes('doctor') || n.includes('hospital') || n.includes('pharmacy') || n.includes('medicine')) return 'activity'
+    if (n.includes('entertainment') || n.includes('leisure') || n.includes('cinema') || n.includes('movie') || n.includes('film') || n.includes('game')) return 'film'
+    if (n.includes('shopping') || n.includes('personal') || n.includes('clothing') || n.includes('fashion') || n.includes('beauty')) return 'shopping-bag'
+    if (n.includes('education') || n.includes('learning') || n.includes('school') || n.includes('tuition') || n.includes('book') || n.includes('course')) return 'briefcase'
+    if (n.includes('travel') || n.includes('vacation') || n.includes('trip') || n.includes('hotel') || n.includes('flight')) return 'briefcase'
+    if (n.includes('subscription') || n.includes('service') || n.includes('streaming') || n.includes('software')) return 'zap'
+    if (n.includes('salary') || n.includes('wage') || n.includes('income') || n.includes('payroll')) return 'briefcase'
+    if (n.includes('business') || n.includes('work') || n.includes('freelance') || n.includes('client')) return 'briefcase'
+    if (n.includes('invest') || n.includes('dividend') || n.includes('stock') || n.includes('crypto')) return 'trending-up'
+    if (n.includes('gift') || n.includes('donation') || n.includes('allowance') || n.includes('charity')) return 'wallet'
+    if (n.includes('refund') || n.includes('cashback') || n.includes('rebate')) return 'wallet'
+    if (n.includes('transfer')) return 'arrow-right-left'
+    // Default fallback based on type
+    return 'wallet'
+}
+
+/**
  * Seed missing default categories for user
  */
 async function ensureDefaultCategoriesExist(userId: string) {
@@ -71,9 +97,10 @@ async function ensureDefaultCategoriesExist(userId: string) {
         for (const name of DEFAULT_EXPENSE_CATEGORIES) {
             const key = `expense:${name.toLowerCase()}`
             if (!existingSet.has(key)) {
+                const icon = pickCategoryIcon(name)
                 await sql`
-                    INSERT INTO categories (user_id, name, type, is_system)
-                    VALUES (${userId}, ${name}, 'expense', TRUE)
+                    INSERT INTO categories (user_id, name, type, icon, is_system)
+                    VALUES (${userId}, ${name}, 'expense', ${icon}, TRUE)
                     ON CONFLICT DO NOTHING
                 `
             }
@@ -82,9 +109,10 @@ async function ensureDefaultCategoriesExist(userId: string) {
         for (const name of DEFAULT_INCOME_CATEGORIES) {
             const key = `income:${name.toLowerCase()}`
             if (!existingSet.has(key)) {
+                const icon = pickCategoryIcon(name)
                 await sql`
-                    INSERT INTO categories (user_id, name, type, is_system)
-                    VALUES (${userId}, ${name}, 'income', TRUE)
+                    INSERT INTO categories (user_id, name, type, icon, is_system)
+                    VALUES (${userId}, ${name}, 'income', ${icon}, TRUE)
                     ON CONFLICT DO NOTHING
                 `
             }
@@ -171,17 +199,19 @@ export async function createCategory(name: string, type: 'income' | 'expense' = 
         return { success: true, id: existing[0].id, name: existing[0].name }
     }
 
+    const icon = pickCategoryIcon(trimmed)
+
     const [inserted] = await sql`
-        INSERT INTO categories (user_id, name, type, is_system)
-        VALUES (${userId}, ${trimmed}, ${type}, FALSE)
-        RETURNING id, name
+        INSERT INTO categories (user_id, name, type, icon, is_system)
+        VALUES (${userId}, ${trimmed}, ${type}, ${icon}, FALSE)
+        RETURNING id, name, icon
     `
 
     revalidatePath('/budgets')
     revalidatePath('/transactions')
     revalidatePath('/dashboard')
 
-    return { success: true, id: inserted.id, name: inserted.name }
+    return { success: true, id: inserted.id, name: inserted.name, icon: inserted.icon }
 }
 
 export async function getCategoryExpenseBreakdown(): Promise<CategoryBreakdownPoint[]> {

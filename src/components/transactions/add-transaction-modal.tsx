@@ -50,12 +50,30 @@ type ModalFormValues = z.infer<typeof modalFormSchema>
 interface AddTransactionModalProps {
     accounts: { id: string; name: string; currency: string }[]
     categories: { id: string; name: string; type: 'income' | 'expense' }[]
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+    initialMode?: 'expense' | 'income' | 'transfer'
+    triggerButton?: React.ReactNode
 }
 
 const AMOUNT_PRESETS = [50, 100, 200, 500, 1000]
 
-export function AddTransactionModal({ accounts, categories: initialCategories }: AddTransactionModalProps) {
-    const [open, setOpen] = useState(false)
+export function AddTransactionModal({
+    accounts,
+    categories: initialCategories,
+    open: controlledOpen,
+    onOpenChange: controlledOnOpenChange,
+    initialMode = 'expense',
+    triggerButton,
+}: AddTransactionModalProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? controlledOpen : internalOpen
+    const setOpen = (val: boolean) => {
+        if (controlledOnOpenChange) controlledOnOpenChange(val)
+        if (!isControlled) setInternalOpen(val)
+    }
+
     const [loading, setLoading] = useState(false)
     const [errorMsg, setErrorMsg] = useState('')
     const [categoryList, setCategoryList] = useState(initialCategories)
@@ -76,7 +94,7 @@ export function AddTransactionModal({ accounts, categories: initialCategories }:
     const form = useForm<ModalFormValues>({
         resolver: zodResolver(modalFormSchema),
         defaultValues: {
-            mode: 'expense',
+            mode: initialMode,
             amount: 0,
             fromAccountId: defaultAccount,
             toAccountId: secondaryAccount,
@@ -86,6 +104,13 @@ export function AddTransactionModal({ accounts, categories: initialCategories }:
             description: '',
         },
     })
+
+    // Reset mode when initialMode changes or modal opens
+    useEffect(() => {
+        if (open && initialMode) {
+            form.setValue('mode', initialMode)
+        }
+    }, [open, initialMode, form])
 
     const mode = useWatch({ control: form.control, name: 'mode' }) || 'expense'
     const fromAccountId = useWatch({ control: form.control, name: 'fromAccountId' })
@@ -103,12 +128,12 @@ export function AddTransactionModal({ accounts, categories: initialCategories }:
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault()
-                setOpen((prev) => !prev)
+                setOpen(!open)
             }
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [])
+    }, [open])
 
     const handleCreateCategory = async () => {
         if (!newCategoryName.trim()) return
@@ -117,10 +142,11 @@ export function AddTransactionModal({ accounts, categories: initialCategories }:
             const catType: 'income' | 'expense' = mode === 'income' ? 'income' : 'expense'
             const res = await createCategory(newCategoryName.trim(), catType)
             if (res.success && res.id) {
-                const newCat: { id: string; name: string; type: 'income' | 'expense' } = {
+                const newCat: { id: string; name: string; type: 'income' | 'expense'; icon?: string | null } = {
                     id: res.id,
                     name: res.name,
                     type: catType,
+                    icon: res.icon ?? null,
                 }
                 setCategoryList((prev) => [newCat, ...prev])
                 form.setValue('categoryId', res.id)
@@ -181,13 +207,23 @@ export function AddTransactionModal({ accounts, categories: initialCategories }:
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2 font-medium" />}>
-                <Plus className="h-4 w-4" />
-                Add / Transfer
-                <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-emerald-400/40 bg-emerald-700/30 px-1.5 text-[10px] text-emerald-200">
-                    <Command className="h-2.5 w-2.5" />K
-                </kbd>
-            </DialogTrigger>
+            {triggerButton !== null && (
+                <DialogTrigger
+                    render={
+                        triggerButton
+                            ? (triggerButton as any)
+                            : (
+                                <Button className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2 font-medium">
+                                    <Plus className="h-4 w-4" />
+                                    Add / Transfer
+                                    <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-emerald-400/40 bg-emerald-700/30 px-1.5 text-[10px] text-emerald-200">
+                                        <Command className="h-2.5 w-2.5" />K
+                                    </kbd>
+                                </Button>
+                            )
+                    }
+                />
+            )}
 
             <DialogContent className="sm:max-w-[460px] bg-slate-900 border-slate-800 text-white p-6">
                 <DialogHeader className="pb-2 border-b border-slate-800">

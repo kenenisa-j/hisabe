@@ -15,6 +15,7 @@ export interface ExtendedTransaction extends Transaction {
     account_name?: string
     category_name?: string
     category_icon?: string
+    fee?: number
 }
 
 interface TransactionListProps {
@@ -80,7 +81,7 @@ export function TransactionList({
                     (tx.account_name && tx.account_name.toLowerCase().includes(query))
 
                 // Type filter
-                const matchesType = typeFilter === 'all' || tx.type === typeFilter
+                const matchesType = typeFilter === 'all' || (typeFilter === 'no-transfer' ? tx.type !== 'transfer' : tx.type === typeFilter)
 
                 // Account filter
                 const matchesAccount = accountFilter === 'all' || tx.account_id === accountFilter
@@ -203,14 +204,15 @@ export function TransactionList({
                             <Select value={typeFilter} onValueChange={(val) => setTypeFilter(val || 'all')}>
                                 <SelectTrigger className="bg-slate-900 border-slate-800 text-white">
                                     <SelectValue>
-                                        {typeFilter === 'all' ? 'All Types' : typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}
+                                        {typeFilter === 'no-transfer' ? 'Expense & Income' : typeFilter === 'all' ? 'All Types' : typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                                    <SelectItem value="all">All Types</SelectItem>
-                                    <SelectItem value="income">Income</SelectItem>
-                                    <SelectItem value="expense">Expense</SelectItem>
-                                    <SelectItem value="transfer">Transfer</SelectItem>
+                                    <SelectItem value="no-transfer">Expense &amp; Income</SelectItem>
+                                    <SelectItem value="all">All (incl. Transfers)</SelectItem>
+                                    <SelectItem value="income">Income Only</SelectItem>
+                                    <SelectItem value="expense">Expense Only</SelectItem>
+                                    <SelectItem value="transfer">Transfers Only</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -363,7 +365,7 @@ export function TransactionList({
                                                         </div>
                                                     </div>
 
-                                                    <div className="text-right">
+                                                     <div className="text-right">
                                                         <p
                                                             className={`text-sm font-bold ${isIncome
                                                                     ? 'text-emerald-400'
@@ -378,6 +380,11 @@ export function TransactionList({
                                                         <span className="text-[11px] capitalize text-slate-500">
                                                             {tx.type}
                                                         </span>
+                                                        {tx.type === 'transfer' && tx.fee != null && tx.fee > 0 && (
+                                                            <span className="block text-[10px] text-amber-400/80 mt-0.5">
+                                                                Fee: {formatCurrency(tx.fee, tx.currency as Currency)}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )

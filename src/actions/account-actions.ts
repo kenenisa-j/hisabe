@@ -106,19 +106,40 @@ export async function toggleArchiveAccount(accountId: string, isArchived: boolea
 }
 
 /**
- * Delete an account
+ * Delete an account (also removes all associated transactions and transfers)
  */
 export async function deleteAccount(accountId: string) {
     const userId = await getAuthenticatedUser()
 
-    await sql`
-    DELETE FROM accounts
-    WHERE id = ${accountId} AND user_id = ${userId}
-  `
+    try {
+        // Delete associated transactions first (account_id and to_account_id)
+        await sql`
+            DELETE FROM transactions
+            WHERE (account_id = ${accountId} OR to_account_id = ${accountId})
+              AND user_id = ${userId}
+        `
 
-    revalidatePath('/accounts')
-    revalidatePath('/dashboard')
-    return { success: true }
+        // Delete associated transfers
+        await sql`
+            DELETE FROM transfers
+            WHERE (from_account_id = ${accountId} OR to_account_id = ${accountId})
+              AND user_id = ${userId}
+        `
+
+        // Now delete the account itself
+        await sql`
+            DELETE FROM accounts
+            WHERE id = ${accountId} AND user_id = ${userId}
+        `
+
+        revalidatePath('/accounts')
+        revalidatePath('/transactions')
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (error) {
+        console.error('Failed to delete account:', error)
+        return { success: false, error: 'Failed to delete account. Please try again.' }
+    }
 }
 
 /**

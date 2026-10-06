@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { sql } from '@/lib/db'
+import { sql, sqlRaw } from '@/lib/db'
 import {
     enforceAuth,
     verifyAccountOwnership,
@@ -48,7 +48,7 @@ export async function createTransaction(input: TransactionFormValues) {
         const balanceDelta = type === 'income' ? amount : -amount
 
         await sql.transaction([
-            sql`
+            sqlRaw`
               INSERT INTO transactions (
                 user_id,
                 account_id,
@@ -71,7 +71,7 @@ export async function createTransaction(input: TransactionFormValues) {
                 NOW()
               )
             `,
-            sql`
+            sqlRaw`
               UPDATE accounts
               SET balance = balance + ${balanceDelta}, updated_at = NOW()
               WHERE id = ${accountId} AND user_id = ${userId}
@@ -184,12 +184,12 @@ export async function updateTransaction(
 
         // 4. Execute atomic transaction to reverse old balance, update record, and apply new balance
         await sql.transaction([
-            sql`
+            sqlRaw`
               UPDATE accounts
               SET balance = balance + ${originalDelta}, updated_at = NOW()
               WHERE id = ${original.account_id} AND user_id = ${userId}
             `,
-            sql`
+            sqlRaw`
               UPDATE transactions
               SET
                 account_id = ${accountId},
@@ -201,7 +201,7 @@ export async function updateTransaction(
                 transaction_date = ${new Date(date).toISOString().split('T')[0]}::date
               WHERE id = ${transactionId} AND user_id = ${userId}
             `,
-            sql`
+            sqlRaw`
               UPDATE accounts
               SET balance = balance + ${newDelta}, updated_at = NOW()
               WHERE id = ${accountId} AND user_id = ${userId}
@@ -248,12 +248,12 @@ export async function deleteTransaction(transactionId: string) {
         const revertDelta = tx.type === 'income' ? -parseFloat(tx.amount) : parseFloat(tx.amount)
 
         await sql.transaction([
-            sql`
+            sqlRaw`
               UPDATE accounts
               SET balance = balance + ${revertDelta}, updated_at = NOW()
               WHERE id = ${tx.account_id} AND user_id = ${userId}
             `,
-            sql`
+            sqlRaw`
               DELETE FROM transactions
               WHERE id = ${transactionId} AND user_id = ${userId}
             `

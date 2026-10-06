@@ -15,6 +15,9 @@ export default function SignUpPage() {
                     </p>
                 </div>
                 <SignUp
+                    path="/sign-up"
+                    routing="path"
+                    signInUrl="/sign-in"
                     appearance={{
                         elements: {
                             card: 'bg-slate-900 border border-slate-800 shadow-xl',

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Account, AccountType, Currency } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import { createAccount, toggleArchiveAccount, deleteAccount } from '@/actions/account-actions'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -24,7 +24,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, MoreVertical, Archive, Trash2, Eye, EyeOff, Building2 } from 'lucide-react'
+import { Plus, MoreVertical, Archive, Trash2, Eye, EyeOff, Building2, AlertTriangle } from 'lucide-react'
 import { BankBrandLogo } from './bank-brand-logo'
 
 interface AccountCardsProps {
@@ -80,6 +80,13 @@ function getAccountBadgeAndIcon(name: string, type: AccountType) {
         }
     }
 
+    if (lower.includes('m-pesa') || lower.includes('mpesa') || lower.includes('safaricom')) {
+        return {
+            color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+            badgeText: 'M-PESA',
+        }
+    }
+
     if (type === 'cash' || lower.includes('cash') || lower.includes('wallet')) {
         return {
             color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
@@ -89,7 +96,7 @@ function getAccountBadgeAndIcon(name: string, type: AccountType) {
 
     if (lower.includes('cbe') || lower.includes('commercial bank')) {
         return {
-            color: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+            color: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
             badgeText: 'Commercial Bank of Ethiopia',
         }
     }
@@ -103,14 +110,14 @@ function getAccountBadgeAndIcon(name: string, type: AccountType) {
 
     if (lower.includes('awash')) {
         return {
-            color: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+            color: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
             badgeText: 'Awash Bank',
         }
     }
 
     if (lower.includes('dashen')) {
         return {
-            color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+            color: 'bg-red-500/10 text-red-400 border-red-500/20',
             badgeText: 'Dashen Bank',
         }
     }
@@ -124,7 +131,7 @@ function getAccountBadgeAndIcon(name: string, type: AccountType) {
 
     if (lower.includes('coop') || lower.includes('cooperative')) {
         return {
-            color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+            color: 'bg-red-500/10 text-red-400 border-red-500/20',
             badgeText: 'Cooperative Bank',
         }
     }
@@ -138,8 +145,8 @@ function getAccountBadgeAndIcon(name: string, type: AccountType) {
 
     if (lower.includes('nib')) {
         return {
-            color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-            badgeText: 'Nib Bank',
+            color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+            badgeText: 'Nib International',
         }
     }
 
@@ -178,9 +185,16 @@ function getAccountBadgeAndIcon(name: string, type: AccountType) {
         }
     }
 
+    if (type === 'digital' || lower.includes('paypal') || lower.includes('chapa')) {
+        return {
+            color: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+            badgeText: lower.includes('paypal') ? 'PayPal' : lower.includes('chapa') ? 'Chapa' : 'Digital',
+        }
+    }
+
     return {
         color: 'bg-slate-800 text-slate-300 border-slate-700',
-        badgeText: type.toUpperCase(),
+        badgeText: type.charAt(0).toUpperCase() + type.slice(1),
     }
 }
 
@@ -188,6 +202,10 @@ export function AccountCards({ initialAccounts }: AccountCardsProps) {
     const [showArchived, setShowArchived] = useState(false)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isPending, startTransition] = useTransition()
+
+    // Delete confirmation state
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
     // Form State
     const [name, setName] = useState('')
@@ -227,16 +245,60 @@ export function AccountCards({ initialAccounts }: AccountCardsProps) {
         })
     }
 
-    const handleDelete = (id: string) => {
-        if (confirm('Are you sure you want to delete this account?')) {
-            startTransition(async () => {
-                await deleteAccount(id)
-            })
-        }
+    const handleDeleteClick = (id: string, name: string) => {
+        setDeleteTarget({ id, name })
+        setIsDeleteDialogOpen(true)
+    }
+
+    const handleDeleteConfirm = () => {
+        if (!deleteTarget) return
+        startTransition(async () => {
+            await deleteAccount(deleteTarget.id)
+            setIsDeleteDialogOpen(false)
+            setDeleteTarget(null)
+        })
     }
 
     return (
         <div className="space-y-6">
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-[400px] p-6">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-white text-base font-semibold">
+                            <AlertTriangle className="h-5 w-5 text-red-400" />
+                            Delete Account
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-2">
+                        <p className="text-sm text-slate-300">
+                            Are you sure you want to delete{' '}
+                            <span className="font-semibold text-white">&quot;{deleteTarget?.name}&quot;</span>?
+                        </p>
+                        <p className="text-xs text-slate-500">
+                            This will permanently delete the account and all its associated transactions. This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3 pt-1">
+                            <Button
+                                variant="outline"
+                                className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800"
+                                onClick={() => setIsDeleteDialogOpen(false)}
+                                disabled={isPending}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="flex-1 bg-red-600 hover:bg-red-500 text-white font-semibold"
+                                onClick={handleDeleteConfirm}
+                                disabled={isPending}
+                            >
+                                {isPending ? 'Deleting...' : 'Delete Account'}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             {/* Action Header Controls */}
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <Button
@@ -389,54 +451,62 @@ export function AccountCards({ initialAccounts }: AccountCardsProps) {
                         return (
                             <Card
                                 key={account.id}
-                                className={`border-slate-800 bg-slate-900 text-white transition-all shadow-md ${account.is_archived ? 'opacity-50' : 'hover:border-slate-700'
-                                    }`}
+                                className={`border-slate-800 bg-slate-900 text-white transition-all shadow-md ${account.is_archived ? 'opacity-50' : 'hover:border-slate-700 hover:shadow-lg'}`}
                             >
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <div className="flex items-center gap-3">
-                                        <BankBrandLogo name={account.name} type={account.type} size="md" />
-                                        <div>
-                                            <CardTitle className="text-base font-semibold">
-                                                <Link href={`/accounts/${account.id}`} className="hover:underline hover:text-emerald-400">
+                                <CardContent className="p-4">
+                                    {/* Top Row: Logo + Name + Menu */}
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <BankBrandLogo name={account.name} type={account.type} size="md" />
+                                            <div className="min-w-0">
+                                                <Link
+                                                    href={`/accounts/${account.id}`}
+                                                    className="font-semibold text-white hover:text-emerald-400 text-sm leading-tight line-clamp-1 block"
+                                                >
                                                     {account.name}
                                                 </Link>
-                                            </CardTitle>
-                                            <Badge variant="outline" className={`mt-1 text-[11px] font-medium border ${display.color}`}>
-                                                {display.badgeText}
-                                            </Badge>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`mt-1 text-[10px] font-medium border px-1.5 py-0 ${display.color}`}
+                                                >
+                                                    {display.badgeText}
+                                                </Badge>
+                                            </div>
                                         </div>
+
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger
+                                                render={
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white shrink-0" />
+                                                }
+                                            >
+                                                <MoreVertical className="h-4 w-4" />
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-white">
+                                                <DropdownMenuItem
+                                                    onClick={() => handleArchiveToggle(account.id, !!account.is_archived)}
+                                                    className="cursor-pointer hover:bg-slate-800"
+                                                >
+                                                    <Archive className="mr-2 h-4 w-4" />
+                                                    {account.is_archived ? 'Unarchive' : 'Archive'}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDeleteClick(account.id, account.name)}
+                                                    className="cursor-pointer text-red-400 hover:bg-slate-800 focus:text-red-400"
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
 
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger
-                                            render={
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" />
-                                            }
-                                        >
-                                            <MoreVertical className="h-4 w-4" />
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-white">
-                                            <DropdownMenuItem
-                                                onClick={() => handleArchiveToggle(account.id, !!account.is_archived)}
-                                                className="cursor-pointer hover:bg-slate-800"
-                                            >
-                                                <Archive className="mr-2 h-4 w-4" />
-                                                {account.is_archived ? 'Unarchive' : 'Archive'}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => handleDelete(account.id)}
-                                                className="cursor-pointer text-red-400 hover:bg-slate-800 focus:text-red-400"
-                                            >
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </CardHeader>
-
-                                <CardContent className="pt-2">
-                                    <p className="text-2xl font-bold tracking-tight text-white">
-                                        {formatCurrency(account.balance, account.currency)}
-                                    </p>
+                                    {/* Balance Row */}
+                                    <div className="pt-1 border-t border-slate-800/60">
+                                        <p className="text-2xl font-bold tracking-tight text-white mt-2">
+                                            {formatCurrency(account.balance, account.currency)}
+                                        </p>
+                                        <p className="text-xs text-slate-500 mt-0.5">Current Balance</p>
+                                    </div>
                                 </CardContent>
                             </Card>
                         )

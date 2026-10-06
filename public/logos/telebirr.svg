@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" width="250" height="250">
+  <rect width="250" height="250" rx="48" fill="#00AEEF" />
+  <!-- Telebirr Stylized Dynamic Curves -->
+  <path d="M 60 70 C 60 55, 190 55, 190 70 C 190 90, 140 100, 140 130 L 140 185 C 140 195, 110 195, 110 185 L 110 130 C 110 100, 60 90, 60 70 Z" fill="#FFFFFF" />
+  <!-- Yellow Ethio Telecom Dot/Accent -->
+  <circle cx="125" cy="50" r="16" fill="#FFD100" />
+  <!-- Telebirr Text -->
+  <text x="125" y="215" text-anchor="middle" fill="#FFFFFF" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="26" letter-spacing="1">telebirr</text>
+</svg>

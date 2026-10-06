@@ -1,10 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" width="250" height="250">
-  <rect width="250" height="250" rx="40" fill="#0A1836" />
-  <!-- Overlapping interlocking golden circles for Hibret (Unity) -->
-  <circle cx="100" cy="95" r="45" fill="none" stroke="#F59E0B" stroke-width="12" />
-  <circle cx="150" cy="95" r="45" fill="none" stroke="#EAB308" stroke-width="12" />
-  <circle cx="125" cy="130" r="45" fill="none" stroke="#F97316" stroke-width="12" />
-  <!-- Text HIBRET -->
-  <text x="125" y="200" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif" font-weight="900" font-size="26" letter-spacing="2">HIBRET</text>
-  <text x="125" y="222" text-anchor="middle" fill="#F59E0B" font-family="Arial, sans-serif" font-weight="700" font-size="12" letter-spacing="4">BANK</text>
-</svg>
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" width="250" height="250"><rect width="250" height="250" rx="48" fill="#0A3D62"/><circle cx="125" cy="90" r="52" fill="#F4C430"/><polygon points="125,52 137,82 169,82 144,100 153,130 125,112 97,130 106,100 81,82 113,82" fill="#0A3D62"/><text x="125" y="188" text-anchor="middle" fill="#F4C430" font-family="Roboto,sans-serif" font-weight="900" font-size="20" letter-spacing="2">HIBRET</text><text x="125" y="210" text-anchor="middle" fill="#fff" opacity=".7" font-family="Roboto,sans-serif" font-weight="700" font-size="11" letter-spacing="3">UNITED BANK</text></svg>

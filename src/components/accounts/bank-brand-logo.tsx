@@ -1,5 +1,4 @@
 import React from 'react'
-import Image from 'next/image'
 
 interface BankBrandLogoProps {
     name: string
@@ -47,151 +46,153 @@ export function BankBrandLogo({ name, type, className = '', size = 'md' }: BankB
         lg: { box: 'w-14 h-14 rounded-2xl text-sm', img: 56 },
     }[size]
 
-    const renderOfficialLogo = (src: string, alt: string, bgClass = 'bg-white p-1 border border-slate-200') => (
+    const renderSVGLogo = (src: string, alt: string, bgClass = 'bg-white border border-slate-200') => (
         <div className={`flex items-center justify-center shadow-md overflow-hidden shrink-0 ${dimensions.box} ${bgClass} ${className}`}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
                 src={src}
                 alt={alt}
                 width={dimensions.img}
                 height={dimensions.img}
                 className="object-contain w-full h-full"
+                loading="lazy"
             />
         </div>
     )
 
     // 1. CBE Birr (Must check before CBE!)
     if (lower.includes('cbe birr') || lower.includes('cbebirr')) {
-        return renderOfficialLogo('/logos/cbebirr.png', 'CBE Birr', 'bg-white p-1 border border-purple-300')
+        return renderSVGLogo('/logos/cbe_birr_normal.svg', 'CBE Birr', 'bg-white border border-purple-300')
     }
 
     // 2. M-PESA Safaricom
     if (lower.includes('m-pesa') || lower.includes('mpesa') || lower.includes('safaricom')) {
-        return renderOfficialLogo('/logos/mpesa.png', 'M-PESA Safaricom', 'bg-white p-1 border border-emerald-300')
+        return renderSVGLogo('/logos/mpesa.png', 'M-PESA Safaricom', 'bg-white border border-emerald-300')
     }
 
     // 3. Telebirr
     if (lower.includes('telebirr') || lower.includes('tele birr')) {
-        return renderOfficialLogo('/logos/telebirr.png', 'Telebirr', 'bg-white p-1 border border-cyan-200 shadow-cyan-500/20')
+        return renderSVGLogo('/logos/tele_birr.svg', 'Telebirr', 'bg-white border border-cyan-200')
     }
 
     // 4. Commercial Bank of Ethiopia (CBE)
     if (lower.includes('cbe') || lower.includes('commercial bank') || lower.includes('ንግድ ባንክ')) {
-        return renderOfficialLogo('/logos/cbe.png', 'Commercial Bank of Ethiopia', 'bg-slate-950 p-1 border border-amber-500/30')
+        return renderSVGLogo('/logos/commercial_bank_of_ethiopia.svg', 'Commercial Bank of Ethiopia', 'bg-white border border-slate-200')
     }
 
     // 5. Bank of Abyssinia (BOA)
     if (lower.includes('abyssinia') || lower.includes('boa') || lower.includes('አቢሲንያ')) {
-        return renderOfficialLogo('/logos/abyssinia.png', 'Bank of Abyssinia', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/bank_of_abyssinia.svg', 'Bank of Abyssinia', 'bg-white border border-slate-200')
     }
 
     // 6. Awash Bank
     if (lower.includes('awash') || lower.includes('አዋሽ')) {
-        return renderOfficialLogo('/logos/awash.png', 'Awash Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/awash_international_bank.svg', 'Awash Bank', 'bg-white border border-slate-200')
     }
 
     // 7. Dashen Bank
     if (lower.includes('dashen') || lower.includes('ዳሸን')) {
-        return renderOfficialLogo('/logos/dashen.png', 'Dashen Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/dashen_bank.svg', 'Dashen Bank', 'bg-white border border-slate-200')
     }
 
     // 8. Hibret Bank (United Bank)
     if (lower.includes('hibret') || lower.includes('united bank') || lower.includes('ህብረት')) {
-        return renderOfficialLogo('/logos/hibret.png', 'Hibret Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/hibret_bank.svg', 'Hibret Bank', 'bg-white border border-slate-200')
     }
 
     // 9. Cooperative Bank of Oromia (Coopbank)
     if (lower.includes('coop') || lower.includes('cooperative') || lower.includes('ኮኦፕ')) {
-        return renderOfficialLogo('/logos/coopbank.png', 'Cooperative Bank of Oromia', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/cooperative_bank_of_oromia.svg', 'Cooperative Bank of Oromia', 'bg-white border border-slate-200')
     }
 
     // 10. Wegagen Bank
     if (lower.includes('wegagen') || lower.includes('ወጋገን')) {
-        return renderOfficialLogo('/logos/wegagen.png', 'Wegagen Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/wegagen.png', 'Wegagen Bank', 'bg-white border border-slate-200')
     }
 
     // 11. Nib International Bank
     if (lower.includes('nib') || lower.includes('ኒብ')) {
-        return renderOfficialLogo('/logos/nib.png', 'Nib International Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/nib.png', 'Nib International Bank', 'bg-white border border-slate-200')
     }
 
     // 12. Zemen Bank
     if (lower.includes('zemen') || lower.includes('ዘመን')) {
-        return renderOfficialLogo('/logos/zemen.png', 'Zemen Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/zemen_bank.svg', 'Zemen Bank', 'bg-white border border-slate-200')
     }
 
     // 13. Enat Bank
     if (lower.includes('enat') || lower.includes('እናት')) {
-        return renderOfficialLogo('/logos/enat.png', 'Enat Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/enat.png', 'Enat Bank', 'bg-white border border-slate-200')
     }
 
     // 14. Oromia Bank
     if (lower.includes('oromia') || lower.includes('oromiyaa') || lower.includes('ኦሮሚያ')) {
-        return renderOfficialLogo('/logos/oromia.png', 'Oromia Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/oromia.png', 'Oromia Bank', 'bg-white border border-slate-200')
     }
 
     // 15. Berhan Bank
     if (lower.includes('berhan') || lower.includes('ብርሃን')) {
-        return renderOfficialLogo('/logos/berhan.png', 'Berhan Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/berhan.png', 'Berhan Bank', 'bg-white border border-slate-200')
     }
 
     // 16. Bunna Bank
     if (lower.includes('bunna') || lower.includes('ቡና')) {
-        return renderOfficialLogo('/logos/bunna.png', 'Bunna International Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/bunna.png', 'Bunna International Bank', 'bg-white border border-slate-200')
     }
 
     // 17. Hijra Bank
     if (lower.includes('hijra') || lower.includes('ሂጅራ')) {
-        return renderOfficialLogo('/logos/hijra.png', 'Hijra Bank', 'bg-white p-1 border border-emerald-300')
+        return renderSVGLogo('/logos/hijra.png', 'Hijra Bank', 'bg-white border border-emerald-300')
     }
 
     // 18. ZamZam Bank
     if (lower.includes('zamzam') || lower.includes('zam zam') || lower.includes('ዘምዘም')) {
-        return renderOfficialLogo('/logos/zamzam.png', 'ZamZam Bank', 'bg-white p-1 border border-teal-300')
+        return renderSVGLogo('/logos/zamzam.png', 'ZamZam Bank', 'bg-white border border-teal-300')
     }
 
     // 19. Amhara Bank
     if (lower.includes('amhara') || lower.includes('አማራ')) {
-        return renderOfficialLogo('/logos/amhara.png', 'Amhara Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/amhara_bank.svg', 'Amhara Bank', 'bg-white border border-slate-200')
     }
 
     // 20. Siinqee Bank
     if (lower.includes('siinqee') || lower.includes('sinqee') || lower.includes('siinqe') || lower.includes('sinqe') || lower.includes('ሲንቄ')) {
-        return renderOfficialLogo('/logos/siinqee.png', 'Siinqee Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/siinqee.png', 'Siinqee Bank', 'bg-white border border-slate-200')
     }
 
     // 21. Tsedey Bank
     if (lower.includes('tsedey') || lower.includes('ፀደይ')) {
-        return renderOfficialLogo('/logos/tsedey.png', 'Tsedey Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/tsedey.png', 'Tsedey Bank', 'bg-white border border-slate-200')
     }
 
     // 22. Gadaa Bank
     if (lower.includes('gadaa') || lower.includes('gada') || lower.includes('ገዳ')) {
-        return renderOfficialLogo('/logos/gadaa.png', 'Gadaa Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/gadaa.png', 'Gadaa Bank', 'bg-white border border-slate-200')
     }
 
     // 23. Shabelle Bank
     if (lower.includes('shabelle') || lower.includes('ሸበሌ')) {
-        return renderOfficialLogo('/logos/shabelle.png', 'Shabelle Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/shabelle.png', 'Shabelle Bank', 'bg-white border border-slate-200')
     }
 
     // 24. Rammis Bank
     if (lower.includes('rammis') || lower.includes('ራሚስ')) {
-        return renderOfficialLogo('/logos/rammis.png', 'Rammis Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/rammis.png', 'Rammis Bank', 'bg-white border border-slate-200')
     }
 
     // 25. Ahadu Bank
     if (lower.includes('ahadu') || lower.includes('አሃዱ')) {
-        return renderOfficialLogo('/logos/ahadu.png', 'Ahadu Bank', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/ahadu.png', 'Ahadu Bank', 'bg-white border border-slate-200')
     }
 
     // 26. PayPal
     if (lower.includes('paypal')) {
-        return renderOfficialLogo('/logos/paypal.png', 'PayPal', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/paypal.png', 'PayPal', 'bg-white border border-slate-200')
     }
 
     // 27. Chapa
     if (lower.includes('chapa')) {
-        return renderOfficialLogo('/logos/chapa.png', 'Chapa', 'bg-white p-1 border border-slate-200')
+        return renderSVGLogo('/logos/chapa.svg', 'Chapa', 'bg-white border border-slate-200')
     }
 
     // 28. Physical Cash / Wallet

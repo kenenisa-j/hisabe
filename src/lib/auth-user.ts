@@ -13,21 +13,25 @@ export async function getAuthenticatedUser() {
         throw new Error('Unauthorized: You must be logged in to access this data.')
     }
 
-    // Ensure user profile exists in Neon database
-    const existingUser = await sql`
-    SELECT id FROM profiles WHERE id = ${userId}
-  `
+    // Ensure user profile exists in Neon database with error resilience
+    try {
+        const existingUser = await sql`
+            SELECT id FROM profiles WHERE id = ${userId}
+        `
 
-    if (existingUser.length === 0) {
-        const user = await currentUser()
-        const email = user?.emailAddresses[0]?.emailAddress || ''
-        const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
+        if (existingUser.length === 0) {
+            const user = await currentUser()
+            const email = user?.emailAddresses[0]?.emailAddress || ''
+            const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
 
-        await sql`
-      INSERT INTO profiles (id, email, full_name, default_currency)
-      VALUES (${userId}, ${email}, ${fullName}, 'ETB')
-      ON CONFLICT (id) DO NOTHING
-    `
+            await sql`
+                INSERT INTO profiles (id, email, full_name, default_currency)
+                VALUES (${userId}, ${email}, ${fullName}, 'ETB')
+                ON CONFLICT (id) DO NOTHING
+            `
+        }
+    } catch (err: any) {
+        console.error('Profile sync warning (DB network connection delay):', err?.message || err)
     }
 
     return userId
