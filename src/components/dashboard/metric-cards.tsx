@@ -45,6 +45,10 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
         netSavingsEtb,
         incomeChangePercent,
         expenseChangePercent,
+        todayIncomeEtb = 0,
+        todayExpenseEtb = 0,
+        todayNetSavingsEtb = 0,
+        todayTransactionCount = 0,
     } = metrics
 
     const [showBalance, setShowBalance] = useState(true)
@@ -53,6 +57,7 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
     const [modalMode, setModalMode] = useState<'income' | 'expense' | 'transfer'>('expense')
 
     const isSavingsPositive = netSavingsEtb >= 0
+    const isTodaySavingsPositive = todayNetSavingsEtb >= 0
     const accountCount = accounts.length
     const uniqueInstitutions = Array.from(new Set(accounts.map((a) => a.name.trim().toLowerCase()))).length
 
@@ -126,12 +131,14 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
                 ))}
             </div>
 
-            {/* 2. HERO TOTAL BALANCE CARD */}
+            {/* 2. HERO CARD (TOTAL BALANCE OR TODAY'S CASH FLOW) */}
             <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-6 text-white shadow-xl">
                 <div className="flex items-center justify-between">
                     <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">
-                        {selectedPill === 'Summary' || selectedPill === 'Today'
+                        {selectedPill === 'Summary'
                             ? 'TOTAL BALANCE'
+                            : selectedPill === 'Today'
+                            ? "TODAY'S NET FLOW"
                             : `${selectedPill} BALANCE`}
                     </span>
                     <button
@@ -156,13 +163,27 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
 
                 <div className="mt-3 flex items-baseline gap-2">
                     <h2 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
-                        {showBalance ? formatCurrency(currentBalance, 'ETB') : '••••••••'}
+                        {showBalance ? (
+                            selectedPill === 'Today' ? (
+                                <span className={todayNetSavingsEtb > 0 ? 'text-emerald-400' : todayNetSavingsEtb < 0 ? 'text-rose-400' : 'text-white'}>
+                                    {(todayNetSavingsEtb > 0 ? '+' : '') + formatCurrency(todayNetSavingsEtb, 'ETB')}
+                                </span>
+                            ) : (
+                                formatCurrency(currentBalance, 'ETB')
+                            )
+                        ) : (
+                            '••••••••'
+                        )}
                     </h2>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-3 text-xs text-slate-400">
                     <div>
-                        {selectedPill === 'Summary' || selectedPill === 'Today' ? (
+                        {selectedPill === 'Today' ? (
+                            <span>
+                                {todayTransactionCount} Transaction{todayTransactionCount === 1 ? '' : 's'} recorded today
+                            </span>
+                        ) : selectedPill === 'Summary' ? (
                             <>
                                 {uniqueInstitutions > 0 && <span>{uniqueInstitutions} Institutions · </span>}
                                 <span>{accountCount} Active Accounts</span>
@@ -172,22 +193,28 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
                         )}
                     </div>
 
-                    {incomeChangePercent !== 0 && (
-                        <div
-                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold ${
-                                incomeChangePercent >= 0
-                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                                    : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
-                            }`}
-                        >
-                            {incomeChangePercent >= 0 ? (
-                                <ArrowUpRight className="h-3 w-3" />
-                            ) : (
-                                <ArrowDownRight className="h-3 w-3" />
-                            )}
-                            {incomeChangePercent > 0 ? '+' : ''}
-                            {incomeChangePercent.toFixed(1)}% vs last month
+                    {selectedPill === 'Today' ? (
+                        <div className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                            Today&apos;s Activity
                         </div>
+                    ) : (
+                        incomeChangePercent !== 0 && (
+                            <div
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold ${
+                                    incomeChangePercent >= 0
+                                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                                        : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                                }`}
+                            >
+                                {incomeChangePercent >= 0 ? (
+                                    <ArrowUpRight className="h-3 w-3" />
+                                ) : (
+                                    <ArrowDownRight className="h-3 w-3" />
+                                )}
+                                {incomeChangePercent > 0 ? '+' : ''}
+                                {incomeChangePercent.toFixed(1)}% vs last month
+                            </div>
+                        )
                     )}
                 </div>
             </div>
@@ -228,40 +255,58 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
                 </button>
             </div>
 
-            {/* 4. MONTHLY SUMMARY RECAP STRIP (INCOME, EXPENSES, NET SAVINGS) */}
+            {/* 4. SUMMARY / TODAY RECAP STRIP (INCOME, EXPENSES, NET FLOW) */}
             <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-white">
                     <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-slate-400">Monthly Income</span>
+                        <span className="text-[11px] font-semibold text-slate-400">
+                            {selectedPill === 'Today' ? "Today's Income" : 'Monthly Income'}
+                        </span>
                         <TrendingUp className="h-4 w-4 text-emerald-400" />
                     </div>
                     <p className="mt-2 text-base font-extrabold text-emerald-400">
-                        {showBalance ? formatCurrency(monthlyIncomeEtb, 'ETB') : '••••••••'}
+                        {showBalance
+                            ? formatCurrency(selectedPill === 'Today' ? todayIncomeEtb : monthlyIncomeEtb, 'ETB')
+                            : '••••••••'}
                     </p>
                 </div>
 
                 <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-white">
                     <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-slate-400">Monthly Expenses</span>
+                        <span className="text-[11px] font-semibold text-slate-400">
+                            {selectedPill === 'Today' ? "Today's Expenses" : 'Monthly Expenses'}
+                        </span>
                         <TrendingDown className="h-4 w-4 text-rose-400" />
                     </div>
                     <p className="mt-2 text-base font-extrabold text-rose-400">
-                        {showBalance ? formatCurrency(monthlyExpenseEtb, 'ETB') : '••••••••'}
+                        {showBalance
+                            ? formatCurrency(selectedPill === 'Today' ? todayExpenseEtb : monthlyExpenseEtb, 'ETB')
+                            : '••••••••'}
                     </p>
                 </div>
 
                 <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-white">
                     <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-slate-400">Net Cash Flow</span>
+                        <span className="text-[11px] font-semibold text-slate-400">
+                            {selectedPill === 'Today' ? "Today's Net Flow" : 'Net Cash Flow'}
+                        </span>
                         <PiggyBank className="h-4 w-4 text-blue-400" />
                     </div>
                     <p
                         className={`mt-2 text-base font-extrabold ${
-                            isSavingsPositive ? 'text-blue-400' : 'text-rose-400'
+                            selectedPill === 'Today'
+                                ? isTodaySavingsPositive
+                                    ? 'text-emerald-400'
+                                    : 'text-rose-400'
+                                : isSavingsPositive
+                                ? 'text-blue-400'
+                                : 'text-rose-400'
                         }`}
                     >
                         {showBalance
-                            ? (isSavingsPositive ? '+' : '') + formatCurrency(netSavingsEtb, 'ETB')
+                            ? selectedPill === 'Today'
+                                ? (isTodaySavingsPositive ? '+' : '') + formatCurrency(todayNetSavingsEtb, 'ETB')
+                                : (isSavingsPositive ? '+' : '') + formatCurrency(netSavingsEtb, 'ETB')
                             : '••••••••'}
                     </p>
                 </div>

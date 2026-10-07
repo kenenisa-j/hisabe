@@ -22,6 +22,10 @@ export default async function DashboardPage() {
         netSavingsEtb: 0,
         incomeChangePercent: 0,
         expenseChangePercent: 0,
+        todayIncomeEtb: 0,
+        todayExpenseEtb: 0,
+        todayNetSavingsEtb: 0,
+        todayTransactionCount: 0,
     }
 
     let cashflowTrend: any[] = []

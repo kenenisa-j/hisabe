@@ -10,6 +10,10 @@ export interface DashboardMetrics {
     netSavingsEtb: number
     incomeChangePercent: number
     expenseChangePercent: number
+    todayIncomeEtb: number
+    todayExpenseEtb: number
+    todayNetSavingsEtb: number
+    todayTransactionCount: number
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
@@ -26,17 +30,19 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   `
     const totalBalanceEtb = parseFloat(balanceRows[0].total_balance)
 
-    // 2. Compute current month and previous month date boundaries using local date formatting
+    // 2. Compute date boundaries
     const now = new Date()
     const currentYear = now.getFullYear()
     const currentMonth = now.getMonth() + 1
+    const currentDay = now.getDate()
     const currentMonthStartStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`
+    const todayStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`
 
     const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1
     const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear
     const previousMonthStartStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`
 
-    // 3. Aggregate current and prior month cashflow (EXCLUDING transfers)
+    // 3. Aggregate current month, prior month, and today cashflow
     const cashflowRows = await sql`
     SELECT
       -- Current Month
@@ -45,7 +51,12 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       
       -- Previous Month
       COALESCE(SUM(CASE WHEN type = 'income' AND transaction_date >= ${previousMonthStartStr}::date AND transaction_date < ${currentMonthStartStr}::date THEN base_amount_etb ELSE 0 END), 0) AS prev_income,
-      COALESCE(SUM(CASE WHEN type = 'expense' AND transaction_date >= ${previousMonthStartStr}::date AND transaction_date < ${currentMonthStartStr}::date THEN base_amount_etb ELSE 0 END), 0) AS prev_expense
+      COALESCE(SUM(CASE WHEN type = 'expense' AND transaction_date >= ${previousMonthStartStr}::date AND transaction_date < ${currentMonthStartStr}::date THEN base_amount_etb ELSE 0 END), 0) AS prev_expense,
+
+      -- Today
+      COALESCE(SUM(CASE WHEN type = 'income' AND transaction_date = ${todayStr}::date THEN base_amount_etb ELSE 0 END), 0) AS today_income,
+      COALESCE(SUM(CASE WHEN type = 'expense' AND transaction_date = ${todayStr}::date THEN base_amount_etb ELSE 0 END), 0) AS today_expense,
+      COUNT(CASE WHEN transaction_date = ${todayStr}::date THEN 1 END) AS today_tx_count
     FROM transactions
     WHERE user_id = ${userId}
       AND type IN ('income', 'expense')
@@ -56,7 +67,12 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     const prevIncome = parseFloat(cashflowRows[0].prev_income)
     const prevExpense = parseFloat(cashflowRows[0].prev_expense)
 
+    const todayIncome = parseFloat(cashflowRows[0].today_income)
+    const todayExpense = parseFloat(cashflowRows[0].today_expense)
+    const todayTxCount = parseInt(cashflowRows[0].today_tx_count, 10) || 0
+
     const netSavings = currentIncome - currentExpense
+    const todayNetSavings = todayIncome - todayExpense
 
     // Percentage difference calculations
     const incomeChangePercent = prevIncome > 0
@@ -74,5 +90,9 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
         netSavingsEtb: netSavings,
         incomeChangePercent,
         expenseChangePercent,
+        todayIncomeEtb: todayIncome,
+        todayExpenseEtb: todayExpense,
+        todayNetSavingsEtb: todayNetSavings,
+        todayTransactionCount: todayTxCount,
     }
 }
