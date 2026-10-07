@@ -31,6 +31,7 @@ export async function getAccounts(includeArchived = false): Promise<Account[]> {
         currency: row.currency as Currency,
         balance: parseFloat(row.balance),
         is_archived: row.is_archived ?? false,
+        allow_overdraft: row.allow_overdraft ?? false,
         created_at: row.created_at,
         updated_at: row.updated_at,
     }))
@@ -44,21 +45,38 @@ export async function createAccount(data: {
     type: AccountType
     currency: Currency
     initialBalance: number
+    allowOverdraft?: boolean
 }) {
     const userId = await getAuthenticatedUser()
 
     if (!data.name || data.name.trim() === '') {
-        throw new Error('Account name is required.')
+        return { success: false, error: 'Account name is required.' }
     }
 
-    await sql`
-    INSERT INTO accounts (user_id, name, type, currency, balance)
-    VALUES (${userId}, ${data.name.trim()}, ${data.type}, ${data.currency}, ${data.initialBalance})
-  `
+    if (!data.allowOverdraft && data.initialBalance < 0) {
+        return { success: false, error: 'Initial balance cannot be negative for a standard account.' }
+    }
 
-    revalidatePath('/accounts')
-    revalidatePath('/dashboard')
-    return { success: true }
+    try {
+        await sql`
+        INSERT INTO accounts (user_id, name, type, currency, balance, allow_overdraft)
+        VALUES (
+            ${userId},
+            ${data.name.trim()},
+            ${data.type},
+            ${data.currency},
+            ${data.initialBalance},
+            ${data.allowOverdraft ?? false}
+        )
+      `
+
+        revalidatePath('/accounts')
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (error) {
+        console.error('Failed to create account:', error)
+        return { success: false, error: 'Failed to create account. Please try again.' }
+    }
 }
 
 /**
@@ -112,33 +130,79 @@ export async function deleteAccount(accountId: string) {
     const userId = await getAuthenticatedUser()
 
     try {
-        // Delete associated transactions first (account_id and to_account_id)
-        await sql`
-            DELETE FROM transactions
-            WHERE (account_id = ${accountId} OR to_account_id = ${accountId})
-              AND user_id = ${userId}
-        `
+        // Step 1: Delete transactions referencing this account.
+        // Use two separate deletes to avoid issues if to_account_id column doesn't exist.
+        try {
+            await sql`
+                DELETE FROM transactions
+                WHERE account_id = ${accountId} AND user_id = ${userId}
+            `
+        } catch (err) {
+            console.error('deleteAccount – transactions (account_id) delete failed:', err)
+            throw err
+        }
 
-        // Delete associated transfers
-        await sql`
-            DELETE FROM transfers
-            WHERE (from_account_id = ${accountId} OR to_account_id = ${accountId})
-              AND user_id = ${userId}
-        `
+        try {
+            await sql`
+                DELETE FROM transactions
+                WHERE to_account_id = ${accountId} AND user_id = ${userId}
+            `
+        } catch {
+            // to_account_id column may not exist – ignore this step
+        }
 
-        // Now delete the account itself
-        await sql`
+        // Step 2: Delete transfers referencing this account
+        try {
+            await sql`
+                DELETE FROM transfers
+                WHERE (from_account_id = ${accountId} OR to_account_id = ${accountId} OR fee_account_id = ${accountId})
+                  AND user_id = ${userId}
+            `
+        } catch (err) {
+            console.error('deleteAccount – transfers delete failed:', err)
+            throw err
+        }
+
+        // Step 3: Delete recurring transactions if the table exists
+        try {
+            await sql`
+                DELETE FROM recurring_transactions
+                WHERE account_id = ${accountId} AND user_id = ${userId}
+            `
+        } catch {
+            // Ignore – table may not exist
+        }
+
+        // Step 4: Clear default_account_id in user_settings if it references this account
+        try {
+            await sql`
+                UPDATE user_settings
+                SET default_account_id = NULL
+                WHERE user_id = ${userId} AND default_account_id = ${accountId}
+            `
+        } catch {
+            // Ignore – user_settings may not have this account set
+        }
+
+        // Step 5: Delete the account itself
+        const result = await sql`
             DELETE FROM accounts
             WHERE id = ${accountId} AND user_id = ${userId}
+            RETURNING id
         `
+
+        if (result.length === 0) {
+            return { success: false, error: 'Account not found or you do not have permission to delete it.' }
+        }
 
         revalidatePath('/accounts')
         revalidatePath('/transactions')
         revalidatePath('/dashboard')
         return { success: true }
     } catch (error) {
-        console.error('Failed to delete account:', error)
-        return { success: false, error: 'Failed to delete account. Please try again.' }
+        const msg = error instanceof Error ? error.message : String(error)
+        console.error('Failed to delete account:', msg)
+        return { success: false, error: `Failed to delete account: ${msg}` }
     }
 }
 
@@ -165,6 +229,7 @@ export async function getAccountWithTransactions(accountId: string) {
         currency: accountRow.currency as Currency,
         balance: parseFloat(accountRow.balance),
         is_archived: accountRow.is_archived ?? false,
+        allow_overdraft: accountRow.allow_overdraft ?? false,
         created_at: accountRow.created_at,
         updated_at: accountRow.updated_at,
     }

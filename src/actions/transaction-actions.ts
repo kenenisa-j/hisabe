@@ -44,7 +44,19 @@ export async function createTransaction(input: TransactionFormValues) {
     }
 
     try {
-        // 4. Atomically insert transaction row and update account balance
+        // 4. Check sufficient balance for expenses (skip for overdraft-enabled accounts)
+        if (type === 'expense') {
+            const [acc] = await sql`
+                SELECT balance, allow_overdraft FROM accounts WHERE id = ${accountId} AND user_id = ${userId}
+            `
+            if (acc && !acc.allow_overdraft && parseFloat(acc.balance) < amount) {
+                return {
+                    success: false,
+                    error: `Insufficient funds. Account balance cannot be negative (Available: ${parseFloat(acc.balance).toFixed(2)}).`,
+                }
+            }
+        }
+
         const balanceDelta = type === 'income' ? amount : -amount
 
         await sql.transaction([
@@ -181,6 +193,21 @@ export async function updateTransaction(
             ? -parseFloat(original.amount)
             : parseFloat(original.amount)
         const newDelta = type === 'income' ? amount : -amount
+
+        // Check if resulting balance for target account will be negative (skip for overdraft accounts)
+        const [targetAcc] = await sql`
+            SELECT balance, allow_overdraft FROM accounts WHERE id = ${accountId} AND user_id = ${userId}
+        `
+        if (targetAcc && !targetAcc.allow_overdraft) {
+            const currentBal = parseFloat(targetAcc.balance)
+            const netEffect = original.account_id === accountId ? (originalDelta + newDelta) : newDelta
+            if (currentBal + netEffect < 0) {
+                return {
+                    success: false,
+                    error: `Insufficient funds. Account balance cannot be negative (Resulting balance would be ${(currentBal + netEffect).toFixed(2)}).`,
+                }
+            }
+        }
 
         // 4. Execute atomic transaction to reverse old balance, update record, and apply new balance
         await sql.transaction([

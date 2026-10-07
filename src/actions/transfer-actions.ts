@@ -37,12 +37,22 @@ export async function createTransfer(input: CreateTransferInput) {
     }
 
     try {
+        const totalDeduction = amount + (fee || 0)
+
+        // Check source account balance (skip for overdraft-enabled accounts)
+        const [fromAccount] = await sql`
+            SELECT balance, allow_overdraft FROM accounts WHERE id = ${fromAccountId} AND user_id = ${userId}
+        `
+        if (fromAccount && !fromAccount.allow_overdraft && parseFloat(fromAccount.balance) < totalDeduction) {
+            return {
+                success: false,
+                error: `Insufficient funds in source account. Account balance cannot be negative (Available: ${parseFloat(fromAccount.balance).toFixed(2)}).`,
+            }
+        }
+
         const dateStr = transferDate
             ? new Date(transferDate).toISOString()
             : new Date().toISOString()
-
-        // Atomically record transfer and adjust balances for both source and destination accounts
-        const totalDeduction = amount + (fee || 0)
 
         await sql.transaction([
             sqlRaw`

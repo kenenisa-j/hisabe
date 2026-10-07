@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { createAccount } from '@/actions/account-actions'
 import { AccountType, Currency } from '@/types'
 import {
@@ -20,32 +21,46 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { Plus, Building2 } from 'lucide-react'
+import { Plus, Building2, AlertTriangle } from 'lucide-react'
 import { BankBrandLogo } from '@/components/accounts/bank-brand-logo'
 import { ALL_BANK_PRESETS } from '@/components/accounts/account-cards'
 
 export function AddAccountModal() {
+    const router = useRouter()
     const [open, setOpen] = useState(false)
     const [isPending, startTransition] = useTransition()
     const [name, setName] = useState('')
     const [type, setType] = useState<AccountType>('bank')
     const [currency, setCurrency] = useState<Currency>('ETB')
     const [balance, setBalance] = useState('')
+    const [allowOverdraft, setAllowOverdraft] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!name.trim()) return
+        setError(null)
 
         startTransition(async () => {
-            await createAccount({
+            const res = await createAccount({
                 name: name.trim(),
                 type,
                 currency,
                 initialBalance: parseFloat(balance) || 0,
+                allowOverdraft,
             })
+
+            if (!res.success) {
+                setError(res.error || 'Failed to create account.')
+                return
+            }
+
             setName('')
             setBalance('')
+            setAllowOverdraft(false)
+            setError(null)
             setOpen(false)
+            router.refresh()
         })
     }
 
@@ -87,6 +102,13 @@ export function AddAccountModal() {
                         ))}
                     </div>
                 </div>
+
+                {error && (
+                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-4 pt-2">
                     {/* Live Preview Header */}
@@ -158,12 +180,32 @@ export function AddAccountModal() {
                             id="account-balance"
                             type="number"
                             step="0.01"
+                            min={allowOverdraft ? undefined : 0}
                             placeholder="0.00"
                             value={balance}
                             onChange={(e) => setBalance(e.target.value)}
                             className="bg-slate-950 border-slate-800 text-xs text-white placeholder:text-slate-500"
                         />
                     </div>
+
+                    {/* Overdraft Toggle */}
+                    <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-800 bg-slate-950/50 cursor-pointer hover:border-slate-700 transition-colors">
+                        <input
+                            type="checkbox"
+                            checked={allowOverdraft}
+                            onChange={(e) => {
+                                setAllowOverdraft(e.target.checked)
+                                if (!e.target.checked && parseFloat(balance) < 0) setBalance('')
+                            }}
+                            className="mt-0.5 accent-emerald-500 w-4 h-4 shrink-0"
+                        />
+                        <div>
+                            <p className="text-xs font-medium text-slate-200">Allow Overdraft / Negative Balance</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                                Enable for credit cards, loans, or overdraft accounts where the balance can go below zero.
+                            </p>
+                        </div>
+                    </label>
 
                     <Button
                         type="submit"

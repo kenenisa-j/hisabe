@@ -370,10 +370,11 @@ export function AddTransactionModal({
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs text-slate-300">Transfer Fee (Optional)</Label>
+                                <Label className="text-xs text-slate-300">Transfer Fee <span className="text-slate-500 font-normal">(Optional — enter 0 if none)</span></Label>
                                 <Input
                                     type="number"
                                     step="0.01"
+                                    min="0"
                                     placeholder="0.00"
                                     {...form.register('fee', { valueAsNumber: true })}
                                     className="bg-slate-950 border-slate-800 text-xs text-white"

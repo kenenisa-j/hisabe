@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Account, AccountType, Currency } from '@/types'
 import { formatCurrency } from '@/lib/utils'
@@ -199,6 +200,14 @@ function getAccountBadgeAndIcon(name: string, type: AccountType) {
 }
 
 export function AccountCards({ initialAccounts }: AccountCardsProps) {
+    const router = useRouter()
+    const [accounts, setAccounts] = useState(initialAccounts)
+
+    // Keep local state in sync whenever the server pushes fresh data
+    // (e.g. after router.refresh() following a create or delete)
+    useEffect(() => {
+        setAccounts(initialAccounts)
+    }, [initialAccounts])
     const [showArchived, setShowArchived] = useState(false)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isPending, startTransition] = useTransition()
@@ -206,31 +215,45 @@ export function AccountCards({ initialAccounts }: AccountCardsProps) {
     // Delete confirmation state
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [deleteError, setDeleteError] = useState<string | null>(null)
 
     // Form State
     const [name, setName] = useState('')
     const [type, setType] = useState<AccountType>('bank')
     const [currency, setCurrency] = useState<Currency>('ETB')
     const [balance, setBalance] = useState('')
+    const [allowOverdraft, setAllowOverdraft] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
-    const displayedAccounts = initialAccounts.filter(
+    const displayedAccounts = accounts.filter(
         (acc) => showArchived || !acc.is_archived
     )
 
     const handleCreateAccount = (e: React.FormEvent) => {
         e.preventDefault()
         if (!name.trim()) return
+        setError(null)
 
         startTransition(async () => {
-            await createAccount({
+            const res = await createAccount({
                 name: name.trim(),
                 type,
                 currency,
                 initialBalance: parseFloat(balance) || 0,
+                allowOverdraft,
             })
+
+            if (!res.success) {
+                setError(res.error || 'Failed to create account.')
+                return
+            }
+
             setName('')
             setBalance('')
+            setAllowOverdraft(false)
+            setError(null)
             setIsDialogOpen(false)
+            router.refresh()
         })
     }
 
@@ -247,15 +270,24 @@ export function AccountCards({ initialAccounts }: AccountCardsProps) {
 
     const handleDeleteClick = (id: string, name: string) => {
         setDeleteTarget({ id, name })
+        setDeleteError(null)
         setIsDeleteDialogOpen(true)
     }
 
     const handleDeleteConfirm = () => {
         if (!deleteTarget) return
         startTransition(async () => {
-            await deleteAccount(deleteTarget.id)
+            const res = await deleteAccount(deleteTarget.id)
+            if (!res.success) {
+                setDeleteError(res.error || 'Failed to delete account. Please try again.')
+                return
+            }
+            // Immediately remove from local state so UI updates instantly
+            setAccounts((prev) => prev.filter((a) => a.id !== deleteTarget.id))
             setIsDeleteDialogOpen(false)
             setDeleteTarget(null)
+            setDeleteError(null)
+            router.refresh()
         })
     }
 
@@ -278,11 +310,17 @@ export function AccountCards({ initialAccounts }: AccountCardsProps) {
                         <p className="text-xs text-slate-500">
                             This will permanently delete the account and all its associated transactions. This action cannot be undone.
                         </p>
+                        {deleteError && (
+                            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 shrink-0" />
+                                <span>{deleteError}</span>
+                            </div>
+                        )}
                         <div className="flex gap-3 pt-1">
                             <Button
                                 variant="outline"
                                 className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800"
-                                onClick={() => setIsDeleteDialogOpen(false)}
+                                onClick={() => { setIsDeleteDialogOpen(false); setDeleteError(null) }}
                                 disabled={isPending}
                             >
                                 Cancel
@@ -349,6 +387,13 @@ export function AccountCards({ initialAccounts }: AccountCardsProps) {
                             </div>
                         </div>
 
+                        {error && (
+                            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 shrink-0" />
+                                <span>{error}</span>
+                            </div>
+                        )}
+
                         <form onSubmit={handleCreateAccount} className="space-y-4 pt-2">
                             {/* Live Preview Header */}
                             {name.trim() && (
@@ -414,17 +459,37 @@ export function AccountCards({ initialAccounts }: AccountCardsProps) {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="balance" className="text-xs text-slate-300 font-medium">Current Balance</Label>
+                                <Label htmlFor="balance" className="text-xs text-slate-300 font-medium">Initial Balance</Label>
                                 <Input
                                     id="balance"
                                     type="number"
                                     step="0.01"
+                                    min={allowOverdraft ? undefined : 0}
                                     placeholder="0.00"
                                     value={balance}
                                     onChange={(e) => setBalance(e.target.value)}
                                     className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500"
                                 />
                             </div>
+
+                            {/* Overdraft Toggle */}
+                            <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-800 bg-slate-950/50 cursor-pointer hover:border-slate-700 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={allowOverdraft}
+                                    onChange={(e) => {
+                                        setAllowOverdraft(e.target.checked)
+                                        if (!e.target.checked && parseFloat(balance) < 0) setBalance('')
+                                    }}
+                                    className="mt-0.5 accent-emerald-500 w-4 h-4 shrink-0"
+                                />
+                                <div>
+                                    <p className="text-xs font-medium text-slate-200">Allow Overdraft / Negative Balance</p>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">
+                                        Enable for credit cards, loans, or overdraft accounts where the balance can go below zero.
+                                    </p>
+                                </div>
+                            </label>
 
                             <Button
                                 type="submit"

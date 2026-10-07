@@ -19,6 +19,7 @@ export interface Account {
     currency: Currency
     balance: number
     is_archived?: boolean
+    allow_overdraft?: boolean
     created_at: string
     updated_at: string
 }

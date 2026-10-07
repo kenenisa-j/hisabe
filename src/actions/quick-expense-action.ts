@@ -33,12 +33,19 @@ export async function createQuickExpense(rawInput: {
     const { amount, description, accountId, categoryId } = parsed.data
     const today = new Date().toISOString().split('T')[0]
 
-    // Verify account ownership
+    // Verify account ownership & check available balance
     const [account] = await sql`
-    SELECT id FROM accounts WHERE id = ${accountId} AND user_id = ${userId}
-  `
+        SELECT id, balance, allow_overdraft FROM accounts WHERE id = ${accountId} AND user_id = ${userId}
+    `
     if (!account) {
         throw new Error('FORBIDDEN: Account not found or unauthorized')
+    }
+
+    if (!account.allow_overdraft && parseFloat(account.balance) < amount) {
+        return {
+            success: false,
+            error: `Insufficient funds. Account balance cannot be negative (Available: ${parseFloat(account.balance).toFixed(2)}).`,
+        }
     }
 
     // Insert transaction

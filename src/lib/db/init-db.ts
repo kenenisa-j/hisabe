@@ -115,6 +115,10 @@ export async function ensureTablesExist() {
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS color VARCHAR(50) DEFAULT '#3b82f6';
     `
 
+        await sql`
+      ALTER TABLE accounts ADD COLUMN IF NOT EXISTS allow_overdraft BOOLEAN NOT NULL DEFAULT FALSE;
+    `
+
         isInitialized = true
     } catch (error) {
         console.error('Failed to initialize database tables:', error)

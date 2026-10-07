@@ -13,7 +13,7 @@ export const accountFormSchema = z.object({
     }),
     initialBalance: z.coerce
         .number({ message: 'Please enter a valid amount' })
-        .min(0, 'Balance cannot be negative'),
+        .min(0, 'Initial balance cannot be negative'),
 })
 
 export type AccountFormValues = z.infer<typeof accountFormSchema>
