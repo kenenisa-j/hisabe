@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { sql } from '@/lib/db'
 import { getAuthenticatedUser } from '@/lib/auth-user'
+import { verifyCategoryAccess } from '@/lib/security-guards'
 export type { BudgetProgress, UpsertBudgetInput } from '@/types/budget'
 import { BudgetProgress, UpsertBudgetInput } from '@/types/budget'
 
@@ -17,6 +18,11 @@ export async function upsertBudget(input: UpsertBudgetInput) {
 
     if (amount <= 0) throw new Error('Budget amount must be greater than zero')
     if (month < 1 || month > 12) throw new Error('Invalid month')
+
+    const hasCategoryAccess = await verifyCategoryAccess(categoryId, userId)
+    if (!hasCategoryAccess) {
+        throw new Error('Category not found or access denied.')
+    }
 
     await sql`
     INSERT INTO budgets (user_id, category_id, amount, month, year, updated_at)

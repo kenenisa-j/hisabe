@@ -1,38 +1,50 @@
-import { auth, currentUser } from '@clerk/nextjs/server'
-import { sql } from '@/lib/db'
+import { cookies } from 'next/headers'
+import {
+    verifyFirebaseSessionOrToken,
+    resolveCanonicalIdentity,
+    ensureProfileForIdentity,
+} from '@/lib/firebase/server-auth'
 
 /**
- * Validates the current authenticated Clerk user and guarantees
- * an existing profile row in Neon for foreign key constraints.
+ * Validates the current authenticated user via Firebase
+ * and guarantees canonical identity resolution and profile existence.
+ *
  * Throws an error if the request is unauthenticated.
  */
-export async function getAuthenticatedUser() {
-    const { userId } = await auth()
+export async function getAuthenticatedUser(): Promise<string> {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get('__session')?.value
 
-    if (!userId) {
-        throw new Error('Unauthorized: You must be logged in to access this data.')
-    }
+    if (sessionCookie && sessionCookie.trim().length > 0) {
+        try {
+            let firebaseUid: string | null = null
+            let email = ''
+            let fullName = 'User'
 
-    // Ensure user profile exists in Neon database with error resilience
-    try {
-        const existingUser = await sql`
-            SELECT id FROM profiles WHERE id = ${userId}
-        `
+            const decoded = await verifyFirebaseSessionOrToken(sessionCookie)
+            if (decoded?.uid) {
+                firebaseUid = decoded.uid
+                email = decoded.email || ''
+                fullName = decoded.name || (email ? email.split('@')[0] : 'User')
+            }
 
-        if (existingUser.length === 0) {
-            const user = await currentUser()
-            const email = user?.emailAddresses[0]?.emailAddress || ''
-            const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
+            if (firebaseUid) {
+                // Resolve canonical user ID (via auth_identity_mappings)
+                const { canonicalUserId } = await resolveCanonicalIdentity(firebaseUid)
 
-            await sql`
-                INSERT INTO profiles (id, email, full_name, default_currency)
-                VALUES (${userId}, ${email}, ${fullName}, 'ETB')
-                ON CONFLICT (id) DO NOTHING
-            `
+                // Ensure profile row exists safely
+                await ensureProfileForIdentity({
+                    canonicalUserId,
+                    email,
+                    fullName,
+                })
+
+                return canonicalUserId
+            }
+        } catch (firebaseErr: unknown) {
+            console.error('Firebase session verification failed:', firebaseErr)
         }
-    } catch (err: any) {
-        console.error('Profile sync warning (DB network connection delay):', err?.message || err)
     }
 
-    return userId
+    throw new Error('Unauthorized: You must be logged in to access this data.')
 }

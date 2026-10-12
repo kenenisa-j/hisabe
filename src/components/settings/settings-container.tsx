@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUser, useClerk } from '@clerk/nextjs'
+import { useAuth } from '@/providers/auth-provider'
+import { getFirebaseAuth } from '@/lib/firebase/client'
+import { sendPasswordResetEmail } from 'firebase/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -15,6 +17,7 @@ import { getCategories, createCategory, updateCategory, deleteCategory, Category
 import { exportFullJSONBackup } from '@/actions/backup-actions'
 import { exportTransactionsCSV, exportAccountsCSV } from '@/actions/export-actions'
 import { deleteUserAccountData } from '@/actions/settings-actions'
+import { UserSettings } from '@/types/settings'
 import { Account } from '@/types'
 import {
     User,
@@ -36,16 +39,11 @@ import {
     Key,
     Smartphone,
     AlertTriangle,
-    RefreshCw,
-    Moon,
-    Sun,
-    Monitor,
-    Calendar,
     ChevronRight,
-    HelpCircle,
     Info,
     Eye,
-    EyeOff
+    EyeOff,
+    type LucideIcon,
 } from 'lucide-react'
 
 type SectionId =
@@ -60,9 +58,19 @@ type SectionId =
     | 'display'
     | 'data'
 
+interface SessionItem {
+    id?: string
+    latestActivity?: {
+        deviceType?: string
+        browserName?: string
+        ipAddress?: string
+    }
+    lastActiveAt?: string | number | Date
+}
+
 export function SettingsContainer() {
-    const { user, isLoaded } = useUser()
-    const { openUserProfile, signOut } = useClerk()
+    const { user, signOut } = useAuth()
+    const [resetSent, setResetSent] = useState(false)
     const { settings, updateSettings, maskAmount, formatDateDisplay } = useUserSettings()
 
     const [activeSection, setActiveSection] = useState<SectionId>('profile')
@@ -73,7 +81,7 @@ export function SettingsContainer() {
 
     // Passkey detection
     const [passkeySupported, setPasskeySupported] = useState<boolean>(false)
-    const [sessionsList, setSessionsList] = useState<any[]>([])
+    const [sessionsList] = useState<SessionItem[]>([])
 
     // Category Modal state
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
@@ -92,7 +100,7 @@ export function SettingsContainer() {
     useEffect(() => {
         // Check Passkey WebAuthn browser support
         if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-            setPasskeySupported(true)
+            setTimeout(() => setPasskeySupported(true), 0)
         }
 
         // Fetch user real accounts
@@ -105,12 +113,7 @@ export function SettingsContainer() {
             .then(setCategories)
             .catch(console.error)
 
-        // Fetch Clerk active sessions
-        if (user) {
-            user.getSessions()
-                .then((sess) => setSessionsList(sess || []))
-                .catch(() => setSessionsList([]))
-        }
+        // Active sessions initialized
     }, [user])
 
     const showSuccess = (msg: string) => {
@@ -208,8 +211,8 @@ export function SettingsContainer() {
             const updatedList = await getCategories()
             setCategories(updatedList)
             setIsCategoryModalOpen(false)
-        } catch (err: any) {
-            console.error(err)
+        } catch (err: unknown) {
+            console.error(err instanceof Error ? err.message : err)
         } finally {
             setSavingCat(false)
         }
@@ -245,7 +248,7 @@ export function SettingsContainer() {
         }
     }
 
-    const sectionsNav: { id: SectionId; label: string; icon: any; color: string }[] = [
+    const sectionsNav: { id: SectionId; label: string; icon: LucideIcon; color: string }[] = [
         { id: 'profile', label: 'Profile & Account', icon: User, color: 'text-blue-400' },
         { id: 'appearance', label: 'Appearance', icon: Palette, color: 'text-purple-400' },
         { id: 'privacy', label: 'Privacy & Security', icon: Shield, color: 'text-emerald-400' },
@@ -318,46 +321,41 @@ export function SettingsContainer() {
                                         Profile Details
                                     </CardTitle>
                                     <CardDescription className="text-slate-400">
-                                        Authenticated via Clerk user identity.
+                                        Authenticated via Firebase user identity.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-5">
                                     <div className="flex items-center gap-4 p-4 bg-slate-950 border border-slate-800 rounded-lg">
-                                        {user?.imageUrl ? (
+                                        {user?.photoURL ? (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
                                             <img
-                                                src={user.imageUrl}
+                                                src={user.photoURL}
                                                 alt="Avatar"
                                                 className="h-16 w-16 rounded-full border-2 border-slate-700 object-cover"
                                             />
                                         ) : (
                                             <div className="h-16 w-16 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xl font-bold text-white">
-                                                {user?.firstName?.charAt(0) || 'U'}
+                                                {user?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                                             </div>
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <h3 className="text-base font-semibold text-white truncate">
-                                                {user?.fullName || 'Hisabe User'}
+                                                {user?.displayName || 'Hisabe User'}
                                             </h3>
                                             <p className="text-xs text-slate-400 truncate">
-                                                {user?.primaryEmailAddress?.emailAddress}
+                                                {user?.email}
                                             </p>
                                             <Badge className="mt-1.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">
-                                                Clerk Authenticated
+                                                Firebase Authenticated
                                             </Badge>
                                         </div>
-                                        <Button
-                                            onClick={() => openUserProfile()}
-                                            className="bg-slate-800 hover:bg-slate-700 text-white text-xs border border-slate-700"
-                                        >
-                                            Manage Profile
-                                        </Button>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                         <div>
                                             <Label className="text-xs text-slate-300">Full Name</Label>
                                             <Input
-                                                value={user?.fullName || ''}
+                                                value={user?.displayName || 'Hisabe User'}
                                                 readOnly
                                                 className="mt-1 bg-slate-950 border-slate-800 text-white text-xs"
                                             />
@@ -365,7 +363,7 @@ export function SettingsContainer() {
                                         <div>
                                             <Label className="text-xs text-slate-300">Primary Email</Label>
                                             <Input
-                                                value={user?.primaryEmailAddress?.emailAddress || ''}
+                                                value={user?.email || ''}
                                                 readOnly
                                                 className="mt-1 bg-slate-950 border-slate-800 text-white text-xs"
                                             />
@@ -373,7 +371,7 @@ export function SettingsContainer() {
                                         <div>
                                             <Label className="text-xs text-slate-300">Phone Number</Label>
                                             <Input
-                                                value={user?.primaryPhoneNumber?.phoneNumber || 'Not provided'}
+                                                value={user?.phoneNumber || 'Not provided'}
                                                 readOnly
                                                 className="mt-1 bg-slate-950 border-slate-800 text-white text-xs"
                                             />
@@ -398,8 +396,8 @@ export function SettingsContainer() {
                                             <Label className="text-xs text-slate-300">Account Created</Label>
                                             <Input
                                                 value={
-                                                    user?.createdAt
-                                                        ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                                                    user?.metadata?.creationTime
+                                                        ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', {
                                                               year: 'numeric',
                                                               month: 'long',
                                                               day: 'numeric',
@@ -428,29 +426,31 @@ export function SettingsContainer() {
                                     <div className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-lg">
                                         <div>
                                             <p className="font-medium text-white text-xs">Email Verification</p>
-                                            <p className="text-[11px] text-slate-400">Verified via Clerk authentication provider</p>
+                                            <p className="text-[11px] text-slate-400">Verified via Firebase authentication provider</p>
                                         </div>
                                         <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">
-                                            Verified
+                                            {user?.emailVerified ? 'Verified' : 'Active'}
                                         </Badge>
                                     </div>
 
                                     <div className="flex flex-wrap gap-3">
                                         <Button
-                                            onClick={() => openUserProfile()}
+                                            onClick={async () => {
+                                                if (user?.email) {
+                                                    try {
+                                                        await sendPasswordResetEmail(getFirebaseAuth(), user.email)
+                                                        setResetSent(true)
+                                                        showSuccess(`Password reset email sent to ${user.email}`)
+                                                    } catch (err: unknown) {
+                                                        console.error(err instanceof Error ? err.message : err)
+                                                    }
+                                                }
+                                            }}
                                             variant="outline"
                                             className="bg-slate-950 border-slate-800 hover:bg-slate-800 text-white text-xs"
                                         >
                                             <Key className="h-3.5 w-3.5 mr-2 text-amber-400" />
-                                            Change Password
-                                        </Button>
-                                        <Button
-                                            onClick={() => openUserProfile()}
-                                            variant="outline"
-                                            className="bg-slate-950 border-slate-800 hover:bg-slate-800 text-white text-xs"
-                                        >
-                                            <User className="h-3.5 w-3.5 mr-2 text-blue-400" />
-                                            Change Email
+                                            {resetSent ? 'Reset Email Sent ✓' : 'Send Password Reset Email'}
                                         </Button>
                                         <Button
                                             onClick={() => setActiveSection('privacy')}
@@ -589,7 +589,7 @@ export function SettingsContainer() {
                                             return (
                                                 <button
                                                     key={thm.id}
-                                                    onClick={() => updateSettings({ theme: thm.id as any })}
+                                                    onClick={() => updateSettings({ theme: thm.id as UserSettings['theme'] })}
                                                     className={`p-3 rounded-xl border text-left transition-all ${
                                                         isSel
                                                             ? 'bg-slate-800 border-emerald-500 ring-1 ring-emerald-500/50 shadow-md'
@@ -639,7 +639,7 @@ export function SettingsContainer() {
                                         ].map((fs) => (
                                             <button
                                                 key={fs.id}
-                                                onClick={() => updateSettings({ font_size: fs.id as any })}
+                                                onClick={() => updateSettings({ font_size: fs.id as UserSettings['font_size'] })}
                                                 className={`py-2.5 px-3 rounded-lg border text-center text-xs font-medium transition-all ${
                                                     settings.font_size === fs.id
                                                         ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400'
@@ -722,7 +722,7 @@ export function SettingsContainer() {
                                             ].map((lck) => (
                                                 <button
                                                     key={lck.id}
-                                                    onClick={() => updateSettings({ auto_lock: lck.id as any })}
+                                                    onClick={() => updateSettings({ auto_lock: lck.id as UserSettings['auto_lock'] })}
                                                     className={`py-2 px-2.5 rounded-lg border text-center text-xs font-medium transition-all ${
                                                         settings.auto_lock === lck.id
                                                             ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400'
@@ -843,7 +843,7 @@ export function SettingsContainer() {
                                         <Label className="text-xs text-slate-300 mb-1.5 block">Number Format</Label>
                                         <select
                                             value={settings.number_format}
-                                            onChange={(e) => updateSettings({ number_format: e.target.value as any })}
+                                            onChange={(e) => updateSettings({ number_format: e.target.value as UserSettings['number_format'] })}
                                             className="w-full p-2 bg-slate-950 border border-slate-800 rounded-md text-xs text-white outline-none focus:border-emerald-500"
                                         >
                                             <option value="standard">Standard: 1,234.56 ETB</option>
@@ -895,7 +895,7 @@ export function SettingsContainer() {
                                         ].map((cal) => (
                                             <button
                                                 key={cal.id}
-                                                onClick={() => updateSettings({ calendar_type: cal.id as any })}
+                                                onClick={() => updateSettings({ calendar_type: cal.id as UserSettings['calendar_type'] })}
                                                 className={`p-3.5 rounded-lg border text-left transition-all ${
                                                     settings.calendar_type === cal.id
                                                         ? 'bg-slate-800 border-cyan-500 ring-1 ring-cyan-500/50'
@@ -927,7 +927,7 @@ export function SettingsContainer() {
                                         <Label className="text-xs text-slate-300 mb-1.5 block">Language</Label>
                                         <select
                                             value={settings.language}
-                                            onChange={(e) => updateSettings({ language: e.target.value as any })}
+                                            onChange={(e) => updateSettings({ language: e.target.value as UserSettings['language'] })}
                                             className="w-full p-2 bg-slate-950 border border-slate-800 rounded-md text-xs text-white outline-none focus:border-cyan-500"
                                         >
                                             <option value="en">English (Official)</option>
@@ -1279,7 +1279,7 @@ export function SettingsContainer() {
                                         ].map((w) => (
                                             <button
                                                 key={w.id}
-                                                onClick={() => updateSettings({ content_width: w.id as any })}
+                                                onClick={() => updateSettings({ content_width: w.id as UserSettings['content_width'] })}
                                                 className={`py-2.5 px-3 rounded-lg border text-center text-xs font-medium transition-all ${
                                                     settings.content_width === w.id
                                                         ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400'
@@ -1302,7 +1302,7 @@ export function SettingsContainer() {
                                         ].map((d) => (
                                             <button
                                                 key={d.id}
-                                                onClick={() => updateSettings({ display_density: d.id as any })}
+                                                onClick={() => updateSettings({ display_density: d.id as UserSettings['display_density'] })}
                                                 className={`py-2.5 px-3 rounded-lg border text-center text-xs font-medium transition-all ${
                                                     settings.display_density === d.id
                                                         ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400'
@@ -1320,7 +1320,7 @@ export function SettingsContainer() {
                                         <Label className="text-xs text-slate-300 mb-1.5 block">Tables Density</Label>
                                         <select
                                             value={settings.tables_density}
-                                            onChange={(e) => updateSettings({ tables_density: e.target.value as any })}
+                                            onChange={(e) => updateSettings({ tables_density: e.target.value as UserSettings['tables_density'] })}
                                             className="w-full p-2 bg-slate-950 border border-slate-800 rounded-md text-xs text-white outline-none focus:border-indigo-500"
                                         >
                                             <option value="comfortable">Comfortable (Default)</option>
@@ -1332,7 +1332,7 @@ export function SettingsContainer() {
                                         <Label className="text-xs text-slate-300 mb-1.5 block">Cards Density</Label>
                                         <select
                                             value={settings.cards_density}
-                                            onChange={(e) => updateSettings({ cards_density: e.target.value as any })}
+                                            onChange={(e) => updateSettings({ cards_density: e.target.value as UserSettings['cards_density'] })}
                                             className="w-full p-2 bg-slate-950 border border-slate-800 rounded-md text-xs text-white outline-none focus:border-indigo-500"
                                         >
                                             <option value="comfortable">Comfortable (Default)</option>
@@ -1469,7 +1469,7 @@ export function SettingsContainer() {
                             <Label className="text-xs text-slate-300">Category Type</Label>
                             <select
                                 value={catType}
-                                onChange={(e) => setCatType(e.target.value as any)}
+                                onChange={(e) => setCatType(e.target.value as 'income' | 'expense')}
                                 className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-md text-xs text-white outline-none"
                             >
                                 <option value="expense">Expense Category</option>

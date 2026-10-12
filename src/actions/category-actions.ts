@@ -228,15 +228,20 @@ export async function updateCategory(
     const userId = await getAuthenticatedUser()
     if (!userId) throw new Error('Unauthorized')
 
-    await sql`
+    const result = await sql`
         UPDATE categories
         SET 
             name = COALESCE(${data.name ?? null}, name),
             type = COALESCE(${data.type ?? null}, type),
             icon = COALESCE(${data.icon ?? null}, icon),
             color = COALESCE(${data.color ?? null}, color)
-        WHERE id = ${id} AND (user_id = ${userId} OR user_id IS NULL)
+        WHERE id = ${id} AND user_id = ${userId} AND (is_system = FALSE OR is_system IS NULL)
+        RETURNING id
     `
+
+    if (result.length === 0) {
+        throw new Error('Category not found, access denied, or system category cannot be modified.')
+    }
 
     revalidatePath('/budgets')
     revalidatePath('/transactions')

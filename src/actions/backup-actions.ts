@@ -12,7 +12,7 @@ export async function exportFullJSONBackup() {
     const transactions = await sql`SELECT * FROM transactions WHERE user_id = ${userId}`
     const budgets = await sql`SELECT * FROM budgets WHERE user_id = ${userId}`
     const assets = await sql`SELECT * FROM assets WHERE user_id = ${userId}`
-    const debts = await sql`SELECT * FROM debt_ledgers WHERE user_id = ${userId}`
+    const debts = await sql`SELECT * FROM debts WHERE user_id = ${userId}`
     const recurring = await sql`SELECT * FROM recurring_transactions WHERE user_id = ${userId}`
 
     const backupData = {

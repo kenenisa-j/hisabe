@@ -1,6 +1,6 @@
 import { getDashboardMetrics, DashboardMetrics } from '@/actions/dashboard-actions'
-import { getMonthlyCashflowTrend } from '@/actions/cashflow-actions'
-import { getCategoryExpenseBreakdown } from '@/actions/category-actions'
+import { getMonthlyCashflowTrend, MonthlyCashflowPoint } from '@/actions/cashflow-actions'
+import { getCategoryExpenseBreakdown, CategoryBreakdownPoint } from '@/actions/category-actions'
 import { MetricCards } from '@/components/dashboard/metric-cards'
 import { CashflowChart } from '@/components/dashboard/cashflow-chart'
 import { CategoryBreakdownChart } from '@/components/dashboard/category-breakdown-chart'
@@ -28,8 +28,8 @@ export default async function DashboardPage() {
         todayTransactionCount: 0,
     }
 
-    let cashflowTrend: any[] = []
-    let categoryBreakdown: any[] = []
+    let cashflowTrend: MonthlyCashflowPoint[] = []
+    let categoryBreakdown: CategoryBreakdownPoint[] = []
     let recentTransactions: RecentTransaction[] = []
     let accounts: { id: string; name: string; type?: string; balance?: number; currency: string }[] = []
     let categories: { id: string; name: string; type: 'income' | 'expense' }[] = []
@@ -89,32 +89,44 @@ export default async function DashboardPage() {
         cashflowTrend = fetchedCashflow
         categoryBreakdown = fetchedCategoryBreakdown
 
-        recentTransactions = recentTxRows.map((tx: any) => ({
+        type TxRow = {
+            id: string
+            type: string
+            title: string | null
+            amount: string | number
+            date: string
+            category_name: string | null
+            account_name: string
+        }
+        type AccRow = { id: string; name: string; type: string; balance: string | null; currency: string }
+        type CatRow = { id: string; name: string; type: string }
+
+        recentTransactions = (recentTxRows as TxRow[]).map((tx) => ({
             id: tx.id,
-            type: tx.type,
+            type: tx.type as 'income' | 'expense' | 'transfer',
             title: tx.type === 'transfer'
                 ? (tx.title || tx.account_name)
                 : (tx.title || tx.category_name || 'Untitled Transaction'),
             categoryName: tx.type === 'transfer' ? 'Transfer' : (tx.category_name || 'General'),
             accountName: tx.account_name,
-            amountEtb: parseFloat(tx.amount),
+            amountEtb: parseFloat(String(tx.amount)),
             date: tx.date,
         }))
 
-        accounts = accountRows.map((a: any) => ({
+        accounts = (accountRows as AccRow[]).map((a) => ({
             id: a.id,
             name: a.name,
             type: a.type,
-            balance: parseFloat(a.balance || 0),
+            balance: parseFloat(a.balance || '0'),
             currency: a.currency,
         }))
-        categories = categoryRows.map((c: any) => ({
+        categories = (categoryRows as CatRow[]).map((c) => ({
             id: c.id,
             name: c.name,
             type: c.type as 'income' | 'expense',
         }))
-    } catch (err: any) {
-        console.error('Dashboard data fetch warning:', err?.message || err)
+    } catch (err: unknown) {
+        console.error('Dashboard data fetch warning:', err instanceof Error ? err.message : err)
         isDbError = true
     }
 

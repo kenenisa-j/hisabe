@@ -1,8 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { sql } from '@/lib/db'
+import { sql, sqlRaw } from '@/lib/db'
 import { getAuthenticatedUser } from '@/lib/auth-user'
+import { verifyAccountOwnership } from '@/lib/security-guards'
 export type { Debt, CreateDebtInput, RecordRepaymentInput } from '@/types/debt'
 import { Debt, CreateDebtInput, RecordRepaymentInput } from '@/types/debt'
 
@@ -98,59 +99,82 @@ export async function recordDebtRepayment({ debtId, amount, accountId }: RecordR
     const newStatus = newPaid >= total ? 'settled' : 'partial'
     const isOwedByMe = debt.type === 'owed_by_me'
 
-        // B. If an account is selected, convert repayment to an actual transaction atomically
-        if (accountId) {
-            const txnType = isOwedByMe ? 'expense' : 'income'
-            const description = isOwedByMe
-                ? `Debt Repayment to ${debt.person_name}`
-                : `Loan Collection from ${debt.person_name}`
+    // B. If an account is selected, convert repayment to an actual transaction atomically
+    if (accountId) {
+        const isOwner = await verifyAccountOwnership(accountId, userId)
+        if (!isOwner) {
+            throw new Error('Account not found or access denied.')
+        }
 
-            const [category] = await sql`
-        SELECT id FROM categories 
-        WHERE (user_id = ${userId} OR user_id IS NULL) AND type = ${txnType}
-        ORDER BY created_at ASC LIMIT 1
-      `
-            const categoryId = category?.id || null
 
-            const accountUpdateQuery = isOwedByMe
-                ? sql`UPDATE accounts SET balance = balance - ${amount}, updated_at = NOW() WHERE id = ${accountId} AND user_id = ${userId}`
-                : sql`UPDATE accounts SET balance = balance + ${amount}, updated_at = NOW() WHERE id = ${accountId} AND user_id = ${userId}`
+        const txnType = isOwedByMe ? 'expense' : 'income'
+        const description = isOwedByMe
+            ? `Debt Repayment to ${debt.person_name}`
+            : `Loan Collection from ${debt.person_name}`
 
-            await sql.transaction([
-                sql`
-                  UPDATE debts
-                  SET 
-                    paid_amount = ${newPaid},
-                    status = ${newStatus},
-                    updated_at = NOW()
-                  WHERE id = ${debtId} AND user_id = ${userId}
-                `,
-                sql`
-                  INSERT INTO transactions (
-                    user_id,
-                    account_id,
-                    category_id,
-                    type,
-                    amount,
-                    base_amount_etb,
-                    description,
-                    transaction_date,
-                    created_at
-                  ) VALUES (
-                    ${userId},
-                    ${accountId},
-                    ${categoryId},
-                    ${txnType},
-                    ${amount},
-                    ${amount},
-                    ${description},
-                    CURRENT_DATE,
-                    NOW()
-                  )
-                `,
-                accountUpdateQuery
-            ])
-        } else {
+        const [category] = await sql`
+            SELECT id FROM categories
+            WHERE (user_id = ${userId} OR user_id IS NULL) AND type = ${txnType}
+            ORDER BY created_at ASC LIMIT 1
+        `
+        const categoryId = category?.id || null
+
+        // Build the account update statement. For owed_by_me (expense) debts the
+        // deduction uses a CTE guard: if the account has insufficient funds, the CTE
+        // deliberately computes 1/0 (division by zero), causing a real PostgreSQL
+        // exception that aborts the ENTIRE batch before any row is committed.
+        // For owed_to_me (income) there is no overdraft risk so no guard is needed.
+        const accountUpdateQuery = isOwedByMe
+            ? sqlRaw`
+               WITH guard AS (
+                 SELECT 1 / (CASE WHEN allow_overdraft = false AND balance < ${amount} THEN 0 ELSE 1 END) as ok
+                 FROM accounts
+                 WHERE id = ${accountId} AND user_id = ${userId}
+               )
+               UPDATE accounts
+               SET balance = balance - ${amount}, updated_at = NOW()
+               FROM guard
+               WHERE accounts.id = ${accountId} AND accounts.user_id = ${userId}
+                 AND guard.ok = 1`
+            : sqlRaw`UPDATE accounts
+               SET balance = balance + ${amount}, updated_at = NOW()
+               WHERE id = ${accountId} AND user_id = ${userId}`
+
+        await sql.transaction([
+            sqlRaw`
+              UPDATE debts
+              SET
+                paid_amount = ${newPaid},
+                status = ${newStatus},
+                updated_at = NOW()
+              WHERE id = ${debtId} AND user_id = ${userId}
+            `,
+            sqlRaw`
+              INSERT INTO transactions (
+                user_id,
+                account_id,
+                category_id,
+                type,
+                amount,
+                base_amount_etb,
+                description,
+                transaction_date,
+                created_at
+              ) VALUES (
+                ${userId},
+                ${accountId},
+                ${categoryId},
+                ${txnType},
+                ${amount},
+                ${amount},
+                ${description},
+                CURRENT_DATE,
+                NOW()
+              )
+            `,
+            accountUpdateQuery
+        ])
+    } else {
             await sql`
               UPDATE debts
               SET 

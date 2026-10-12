@@ -209,8 +209,9 @@ export async function deleteUserAccountData(): Promise<{ success: boolean; messa
 
         revalidatePath('/')
         return { success: true, message: 'All personal financial data deleted successfully.' }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Failed to delete user account data:', error)
-        return { success: false, message: error?.message || 'Failed to delete account data.' }
+        const message = error instanceof Error ? error.message : 'Failed to delete account data.'
+        return { success: false, message }
     }
 }

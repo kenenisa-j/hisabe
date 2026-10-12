@@ -112,6 +112,14 @@ export async function ensureTablesExist() {
     `
 
         await sql`
+      CREATE TABLE IF NOT EXISTS auth_identity_mappings (
+        firebase_uid VARCHAR(128) PRIMARY KEY,
+        canonical_user_id VARCHAR(128) NOT NULL UNIQUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
+    `
+
+        await sql`
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS color VARCHAR(50) DEFAULT '#3b82f6';
     `
 

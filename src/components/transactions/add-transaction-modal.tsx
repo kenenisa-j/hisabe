@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -53,7 +53,7 @@ interface AddTransactionModalProps {
     open?: boolean
     onOpenChange?: (open: boolean) => void
     initialMode?: 'expense' | 'income' | 'transfer'
-    triggerButton?: React.ReactNode
+    triggerButton?: React.ReactElement | null
 }
 
 const AMOUNT_PRESETS = [50, 100, 200, 500, 1000]
@@ -69,10 +69,10 @@ export function AddTransactionModal({
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
-    const setOpen = (val: boolean) => {
+    const setOpen = useCallback((val: boolean) => {
         if (controlledOnOpenChange) controlledOnOpenChange(val)
         if (!isControlled) setInternalOpen(val)
-    }
+    }, [controlledOnOpenChange, isControlled])
 
     const [loading, setLoading] = useState(false)
     const [errorMsg, setErrorMsg] = useState('')
@@ -133,7 +133,7 @@ export function AddTransactionModal({
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [open])
+    }, [open, setOpen])
 
     const handleCreateCategory = async () => {
         if (!newCategoryName.trim()) return
@@ -211,7 +211,7 @@ export function AddTransactionModal({
                 <DialogTrigger
                     render={
                         triggerButton
-                            ? (triggerButton as any)
+                            ? triggerButton
                             : (
                                 <Button className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2 font-medium">
                                     <Plus className="h-4 w-4" />

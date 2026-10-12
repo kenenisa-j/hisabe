@@ -3,7 +3,7 @@
 
 import { Menu, Search } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { UserNav } from "@/components/layout/user-nav";
 import { NotificationPopover } from "@/components/notifications/notification-popover";
 import { UserGuideModal } from "@/components/guide/user-guide-modal";
 
@@ -60,15 +60,9 @@ export function ShellHeader({ onMobileMenuOpen }: ShellHeaderProps) {
                 <UserGuideModal />
                 <NotificationPopover />
 
-                {/* User Profile Avatar via Clerk */}
+                {/* User Profile Avatar */}
                 <div className="flex items-center border-l pl-3">
-                    <UserButton
-                        appearance={{
-                            elements: {
-                                avatarBox: "h-9 w-9",
-                            }
-                        }}
-                    />
+                    <UserNav />
                 </div>
             </div>
         </header>

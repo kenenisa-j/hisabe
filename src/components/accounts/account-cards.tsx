@@ -202,11 +202,12 @@ function getAccountBadgeAndIcon(name: string, type: AccountType) {
 export function AccountCards({ initialAccounts }: AccountCardsProps) {
     const router = useRouter()
     const [accounts, setAccounts] = useState(initialAccounts)
+    const [, syncTransition] = useTransition()
 
     // Keep local state in sync whenever the server pushes fresh data
     // (e.g. after router.refresh() following a create or delete)
     useEffect(() => {
-        setAccounts(initialAccounts)
+        syncTransition(() => setAccounts(initialAccounts))
     }, [initialAccounts])
     const [showArchived, setShowArchived] = useState(false)
     const [isDialogOpen, setIsDialogOpen] = useState(false)

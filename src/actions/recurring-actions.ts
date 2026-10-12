@@ -1,8 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { sql } from '@/lib/db'
+import { sql, sqlRaw } from '@/lib/db'
 import { getAuthenticatedUser } from '@/lib/auth-user'
+import { verifyAccountOwnership, verifyCategoryAccess } from '@/lib/security-guards'
 export type { RecurringTransaction, CreateRecurringInput } from '@/types/recurring'
 import {
     RecurringTransaction,
@@ -83,6 +84,18 @@ export async function createRecurringTransaction(input: CreateRecurringInput) {
 
     if (amount <= 0) throw new Error('Amount must be greater than zero')
 
+    const isOwner = await verifyAccountOwnership(accountId, userId)
+    if (!isOwner) {
+        throw new Error('Account not found or access denied.')
+    }
+
+    if (categoryId) {
+        const isCategoryValid = await verifyCategoryAccess(categoryId, userId)
+        if (!isCategoryValid) {
+            throw new Error('Category not found or access denied.')
+        }
+    }
+
     await sql`
     INSERT INTO recurring_transactions (
       user_id, account_id, category_id, type, amount, currency,
@@ -127,34 +140,50 @@ export async function executeRecurringTransaction(id: string) {
 
     if (!item) throw new Error('Recurring rule not found or inactive')
 
+    const isOwner = await verifyAccountOwnership(item.account_id, userId)
+    if (!isOwner) {
+        throw new Error('Account not found or access denied.')
+    }
+
     const amount = parseFloat(item.amount)
     const currentDate = new Date(item.next_due_date)
 
-    // 1. Post entry into transactions table
-    await sql`
-    INSERT INTO transactions (
-      user_id, account_id, category_id, type, amount, base_amount_etb, description, transaction_date
-    ) VALUES (
-      ${userId}, ${item.account_id}, ${item.category_id}, ${item.type}, ${amount}, ${amount},
-      ${item.description || 'Recurring Entry'}, ${currentDate.toISOString().split('T')[0]}::date
-    )
-  `
 
-    // 2. Adjust account balance
-    if (item.type === 'income') {
-        await sql`UPDATE accounts SET balance = balance + ${amount} WHERE id = ${item.account_id}`
-    } else if (item.type === 'expense') {
-        await sql`UPDATE accounts SET balance = balance - ${amount} WHERE id = ${item.account_id}`
-    }
-
-    // 3. Advance next_due_date
+    const balanceDelta = item.type === 'income' ? amount : -amount
     const nextDueDate = calculateNextDueDate(currentDate, item.frequency).toISOString().split('T')[0]
 
-    await sql`
-    UPDATE recurring_transactions
-    SET next_due_date = ${nextDueDate}::date, updated_at = NOW()
-    WHERE id = ${id}
-  `
+    // Execute atomically: insert transaction, update account balance, and advance
+    // the recurring schedule. The account UPDATE uses a CTE guard: if the account
+    // has insufficient funds, the CTE deliberately computes 1/0 (division by zero),
+    // causing a real PostgreSQL exception that aborts the ENTIRE batch before any
+    // row is committed.
+    await sql.transaction([
+        sqlRaw`
+          INSERT INTO transactions (
+            user_id, account_id, category_id, type, amount, base_amount_etb, description, transaction_date, created_at
+          ) VALUES (
+            ${userId}, ${item.account_id}, ${item.category_id}, ${item.type}, ${amount}, ${amount},
+            ${item.description || 'Recurring Entry'}, ${currentDate.toISOString().split('T')[0]}::date, NOW()
+          )
+        `,
+        sqlRaw`
+          WITH guard AS (
+            SELECT 1 / (CASE WHEN allow_overdraft = false AND balance + ${balanceDelta} < 0 THEN 0 ELSE 1 END) as ok
+            FROM accounts
+            WHERE id = ${item.account_id} AND user_id = ${userId}
+          )
+          UPDATE accounts
+          SET balance = balance + ${balanceDelta}, updated_at = NOW()
+          FROM guard
+          WHERE accounts.id = ${item.account_id} AND accounts.user_id = ${userId}
+            AND guard.ok = 1
+        `,
+        sqlRaw`
+          UPDATE recurring_transactions
+          SET next_due_date = ${nextDueDate}::date, updated_at = NOW()
+          WHERE id = ${id} AND user_id = ${userId}
+        `
+    ], { isolationLevel: 'Serializable' })
 
     revalidatePath('/recurring')
     revalidatePath('/transactions')

@@ -50,3 +50,11 @@ export const netWorthSnapshots = pgTable('net_worth_snapshots', {
     snapshotDate: timestamp('snapshot_date').defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+export const authIdentityMappings = pgTable('auth_identity_mappings', {
+    firebaseUid: varchar('firebase_uid', { length: 128 }).primaryKey(),
+    canonicalUserId: varchar('canonical_user_id', { length: 128 }).notNull().unique(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+        .defaultNow()
+        .notNull(),
+})

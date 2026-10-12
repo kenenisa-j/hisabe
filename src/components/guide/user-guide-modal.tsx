@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -19,7 +19,6 @@ import {
     PiggyBank,
     HandCoins,
     BarChart3,
-    Sliders,
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
@@ -31,7 +30,7 @@ interface Step {
     id: number
     title: string
     subtitle: string
-    icon: any
+    icon: React.ComponentType<{ className?: string }>
     iconColor: string
     bgColor: string
     description: string

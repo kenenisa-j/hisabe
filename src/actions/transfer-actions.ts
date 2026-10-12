@@ -39,54 +39,66 @@ export async function createTransfer(input: CreateTransferInput) {
     try {
         const totalDeduction = amount + (fee || 0)
 
-        // Check source account balance (skip for overdraft-enabled accounts)
-        const [fromAccount] = await sql`
-            SELECT balance, allow_overdraft FROM accounts WHERE id = ${fromAccountId} AND user_id = ${userId}
-        `
-        if (fromAccount && !fromAccount.allow_overdraft && parseFloat(fromAccount.balance) < totalDeduction) {
-            return {
-                success: false,
-                error: `Insufficient funds in source account. Account balance cannot be negative (Available: ${parseFloat(fromAccount.balance).toFixed(2)}).`,
-            }
-        }
-
         const dateStr = transferDate
             ? new Date(transferDate).toISOString()
             : new Date().toISOString()
 
-        await sql.transaction([
-            sqlRaw`
-                INSERT INTO transfers (
-                    user_id,
-                    from_account_id,
-                    to_account_id,
-                    amount,
-                    fee,
-                    description,
-                    transfer_date,
-                    created_at
-                ) VALUES (
-                    ${userId},
-                    ${fromAccountId},
-                    ${toAccountId},
-                    ${amount},
-                    ${fee},
-                    ${description?.trim() || null},
-                    ${dateStr}::timestamptz,
-                    NOW()
-                )
-            `,
-            sqlRaw`
-                UPDATE accounts
-                SET balance = balance - ${totalDeduction}, updated_at = NOW()
-                WHERE id = ${fromAccountId} AND user_id = ${userId}
-            `,
-            sqlRaw`
-                UPDATE accounts
-                SET balance = balance + ${amount}, updated_at = NOW()
-                WHERE id = ${toAccountId} AND user_id = ${userId}
-            `
-        ])
+        // Lock accounts in a deterministic order (lexicographic by ID) to reduce
+        // deadlock risk when two concurrent transfers touch the same account pair.
+        // The deduct statement uses a CTE guard: if the source has insufficient funds,
+        // the guard computes 1/0 (division by zero), aborting the ENTIRE transaction
+        // batch before ANY balance change commits.
+        // Note: do NOT use FOR UPDATE inside a CTE referenced by DML — it is not
+        // valid in PostgreSQL and causes CASE WHEN to not short-circuit properly.
+        // SERIALIZABLE isolation handles the concurrency race window instead.
+        const fromFirst = fromAccountId < toAccountId
+
+        const deductFromStmt = sqlRaw`
+            WITH guard AS (
+              SELECT 1 / (CASE WHEN allow_overdraft = false AND balance < ${totalDeduction} THEN 0 ELSE 1 END) as ok
+              FROM accounts
+              WHERE id = ${fromAccountId} AND user_id = ${userId}
+            )
+            UPDATE accounts
+            SET balance = balance - ${totalDeduction}, updated_at = NOW()
+            FROM guard
+            WHERE accounts.id = ${fromAccountId} AND accounts.user_id = ${userId}
+              AND guard.ok = 1
+            RETURNING accounts.id
+        `
+        const addToStmt = sqlRaw`
+            UPDATE accounts
+            SET balance = balance + ${amount}, updated_at = NOW()
+            WHERE id = ${toAccountId} AND user_id = ${userId}
+        `
+        const insertStmt = sqlRaw`
+            INSERT INTO transfers (
+                user_id,
+                from_account_id,
+                to_account_id,
+                amount,
+                fee,
+                description,
+                transfer_date,
+                created_at
+            ) VALUES (
+                ${userId},
+                ${fromAccountId},
+                ${toAccountId},
+                ${amount},
+                ${fee},
+                ${description?.trim() || null},
+                ${dateStr}::timestamptz,
+                NOW()
+            )
+        `
+
+        // Execute in deterministic lock order to prevent deadlocks.
+        // The division-by-zero CTE guard in deductFromStmt will throw a PostgreSQL
+        // exception if balance is insufficient, rolling back the entire batch.
+        fromFirst
+            ? await sql.transaction([deductFromStmt, addToStmt, insertStmt], { isolationLevel: 'Serializable' })
+            : await sql.transaction([addToStmt, deductFromStmt, insertStmt], { isolationLevel: 'Serializable' })
 
         revalidatePath('/')
         revalidatePath('/dashboard')

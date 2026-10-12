@@ -44,21 +44,16 @@ export async function createTransaction(input: TransactionFormValues) {
     }
 
     try {
-        // 4. Check sufficient balance for expenses (skip for overdraft-enabled accounts)
-        if (type === 'expense') {
-            const [acc] = await sql`
-                SELECT balance, allow_overdraft FROM accounts WHERE id = ${accountId} AND user_id = ${userId}
-            `
-            if (acc && !acc.allow_overdraft && parseFloat(acc.balance) < amount) {
-                return {
-                    success: false,
-                    error: `Insufficient funds. Account balance cannot be negative (Available: ${parseFloat(acc.balance).toFixed(2)}).`,
-                }
-            }
-        }
-
         const balanceDelta = type === 'income' ? amount : -amount
 
+        // 4. Atomically insert the transaction and update the account balance.
+        // For expense transactions, the balance UPDATE uses a CTE guard:
+        // if the account has insufficient funds, the CTE computes 1/0
+        // (division by zero), causing a PostgreSQL exception that aborts the
+        // ENTIRE batch before any row commits. Note: do NOT use FOR UPDATE inside
+        // a CTE referenced by DML — it is not valid in PostgreSQL and causes the
+        // CASE WHEN to not short-circuit properly. The UPDATE itself locks the row.
+        // SERIALIZABLE isolation prevents the concurrent TOCTOU race window.
         await sql.transaction([
             sqlRaw`
               INSERT INTO transactions (
@@ -84,11 +79,18 @@ export async function createTransaction(input: TransactionFormValues) {
               )
             `,
             sqlRaw`
+              WITH guard AS (
+                SELECT 1 / (CASE WHEN allow_overdraft = false AND balance + ${balanceDelta} < 0 THEN 0 ELSE 1 END) as ok
+                FROM accounts
+                WHERE id = ${accountId} AND user_id = ${userId}
+              )
               UPDATE accounts
               SET balance = balance + ${balanceDelta}, updated_at = NOW()
-              WHERE id = ${accountId} AND user_id = ${userId}
+              FROM guard
+              WHERE accounts.id = ${accountId} AND accounts.user_id = ${userId}
+                AND guard.ok = 1
             `
-        ])
+        ], { isolationLevel: 'Serializable' })
 
         revalidatePath('/')
         revalidatePath('/dashboard')
@@ -178,7 +180,9 @@ export async function updateTransaction(
     const { amount, type, accountId, categoryId, date, description } = validated.data
 
     try {
-        // 3. Fetch original transaction to reverse balance
+        // 3. Fetch original transaction to compute the balance reversal delta.
+        // This read-only query is safe before the transaction because we only use
+        // it to calculate deltas; the actual balance mutation is guarded atomically below.
         const [original] = await sql`
       SELECT account_id, amount, type
       FROM transactions
@@ -194,22 +198,18 @@ export async function updateTransaction(
             : parseFloat(original.amount)
         const newDelta = type === 'income' ? amount : -amount
 
-        // Check if resulting balance for target account will be negative (skip for overdraft accounts)
-        const [targetAcc] = await sql`
-            SELECT balance, allow_overdraft FROM accounts WHERE id = ${accountId} AND user_id = ${userId}
-        `
-        if (targetAcc && !targetAcc.allow_overdraft) {
-            const currentBal = parseFloat(targetAcc.balance)
-            const netEffect = original.account_id === accountId ? (originalDelta + newDelta) : newDelta
-            if (currentBal + netEffect < 0) {
-                return {
-                    success: false,
-                    error: `Insufficient funds. Account balance cannot be negative (Resulting balance would be ${(currentBal + netEffect).toFixed(2)}).`,
-                }
-            }
-        }
+        // Net effect on the target account balance after this edit.
+        // If the original and new account are the same, we first undo the old
+        // delta and then apply the new one, so the combined net change is used.
+        const isSameAccount = original.account_id === accountId
 
-        // 4. Execute atomic transaction to reverse old balance, update record, and apply new balance
+        // 4. Execute atomic update:
+        //    a) Reverse the original account balance unconditionally.
+        //    b) Update the transaction record.
+        //    c) Apply the new balance delta, guarded by a CTE that raises a
+        //       division-by-zero exception if the account would go negative,
+        //       aborting the entire batch before anything commits.
+        //       Note: do NOT use FOR UPDATE inside a CTE referenced by DML.
         await sql.transaction([
             sqlRaw`
               UPDATE accounts
@@ -229,11 +229,18 @@ export async function updateTransaction(
               WHERE id = ${transactionId} AND user_id = ${userId}
             `,
             sqlRaw`
+              WITH guard AS (
+                SELECT 1 / (CASE WHEN allow_overdraft = false AND balance + ${newDelta} < 0 THEN 0 ELSE 1 END) as ok
+                FROM accounts
+                WHERE id = ${accountId} AND user_id = ${userId}
+              )
               UPDATE accounts
               SET balance = balance + ${newDelta}, updated_at = NOW()
-              WHERE id = ${accountId} AND user_id = ${userId}
+              FROM guard
+              WHERE accounts.id = ${accountId} AND accounts.user_id = ${userId}
+                AND guard.ok = 1
             `
-        ])
+        ], { isolationLevel: 'Serializable' })
 
         revalidatePath('/')
         revalidatePath('/dashboard')

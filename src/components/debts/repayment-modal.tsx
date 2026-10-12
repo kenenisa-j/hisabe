@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { Debt, recordDebtRepayment, settleDebtInFull } from '@/actions/debt-actions'
 import { formatCurrency } from '@/lib/utils'
 
@@ -35,10 +35,14 @@ export function RepaymentModal({ debt, accounts }: RepaymentModalProps) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
+    const [, startDialogTransition] = useTransition()
+
     useEffect(() => {
         if (open) {
-            setAmount(debt.remainingAmount.toString())
-            setError('')
+            startDialogTransition(() => {
+                setAmount(debt.remainingAmount.toString())
+                setError('')
+            })
         }
     }, [open, debt.remainingAmount])
 

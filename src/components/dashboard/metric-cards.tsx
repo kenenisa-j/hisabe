@@ -44,7 +44,6 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
         monthlyExpenseEtb,
         netSavingsEtb,
         incomeChangePercent,
-        expenseChangePercent,
         todayIncomeEtb = 0,
         todayExpenseEtb = 0,
         todayNetSavingsEtb = 0,
@@ -96,22 +95,20 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
                 <button
                     type="button"
                     onClick={() => setSelectedPill('Summary')}
-                    className={`px-4 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
-                        selectedPill === 'Summary'
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${selectedPill === 'Summary'
                             ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                             : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
-                    }`}
+                        }`}
                 >
                     Summary
                 </button>
                 <button
                     type="button"
                     onClick={() => setSelectedPill('Today')}
-                    className={`px-4 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
-                        selectedPill === 'Today'
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${selectedPill === 'Today'
                             ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                             : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
-                    }`}
+                        }`}
                 >
                     Today
                 </button>
@@ -120,11 +117,10 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
                         key={pill.id}
                         type="button"
                         onClick={() => setSelectedPill(pill.label)}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
-                            selectedPill === pill.label
+                        className={`px-4 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${selectedPill === pill.label
                                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                                 : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
-                        }`}
+                            }`}
                     >
                         {pill.label}
                     </button>
@@ -138,8 +134,8 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
                         {selectedPill === 'Summary'
                             ? 'TOTAL BALANCE'
                             : selectedPill === 'Today'
-                            ? "TODAY'S NET FLOW"
-                            : `${selectedPill} BALANCE`}
+                                ? "TODAY'S NET FLOW"
+                                : `${selectedPill} BALANCE`}
                     </span>
                     <button
                         type="button"
@@ -200,11 +196,10 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
                     ) : (
                         incomeChangePercent !== 0 && (
                             <div
-                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold ${
-                                    incomeChangePercent >= 0
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold ${incomeChangePercent >= 0
                                         ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
                                         : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
-                                }`}
+                                    }`}
                             >
                                 {incomeChangePercent >= 0 ? (
                                     <ArrowUpRight className="h-3 w-3" />
@@ -293,15 +288,14 @@ export function MetricCards({ metrics, accounts = [], categories = [] }: MetricC
                         <PiggyBank className="h-4 w-4 text-blue-400" />
                     </div>
                     <p
-                        className={`mt-2 text-base font-extrabold ${
-                            selectedPill === 'Today'
+                        className={`mt-2 text-base font-extrabold ${selectedPill === 'Today'
                                 ? isTodaySavingsPositive
                                     ? 'text-emerald-400'
                                     : 'text-rose-400'
                                 : isSavingsPositive
-                                ? 'text-blue-400'
-                                : 'text-rose-400'
-                        }`}
+                                    ? 'text-blue-400'
+                                    : 'text-rose-400'
+                            }`}
                     >
                         {showBalance
                             ? selectedPill === 'Today'
