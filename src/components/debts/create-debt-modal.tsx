@@ -74,6 +74,11 @@ export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
         currentAmount > selectedAccount.balance
 
     const onSubmit = async (values: DebtFormValues) => {
+        if (values.amount <= 0) {
+            setError('Amount must be greater than 0 ETB. Negative numbers and zero are not allowed.')
+            return
+        }
+
         if (isOverdraftRisk) {
             setError(
                 `You cannot lend ${formatCurrency(values.amount, 'ETB')} because ${selectedAccount?.name} only has ${formatCurrency(selectedAccount?.balance || 0, 'ETB')} in your account. You cannot lend more than what you have.`
@@ -222,7 +227,7 @@ export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
                         </Select>
 
                         {/* Interactive Dynamic Effect Indicator */}
-                        {selectedAccount && selectedAccountId !== 'none' && (
+                        {selectedAccount && selectedAccountId !== 'none' && currentAmount > 0 && (
                             <div
                                 className={`p-2.5 rounded-lg border text-[11px] space-y-1 transition-all ${
                                     selectedType === 'owed_by_me'
@@ -249,8 +254,8 @@ export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
                                 </div>
                                 <p className="text-[10px] text-slate-400 leading-relaxed">
                                     {selectedType === 'owed_by_me'
-                                        ? `Your ${selectedAccount.name} balance will INCREASE by ${formatCurrency(currentAmount || 0, 'ETB')} and be logged as income.`
-                                        : `Your ${selectedAccount.name} balance will DECREASE by ${formatCurrency(currentAmount || 0, 'ETB')} and be logged as an expense.`}
+                                        ? `Your ${selectedAccount.name} balance will INCREASE by ${formatCurrency(currentAmount, 'ETB')} and be logged as income.`
+                                        : `Your ${selectedAccount.name} balance will DECREASE by ${formatCurrency(currentAmount, 'ETB')} and be logged as an expense.`}
                                 </p>
                             </div>
                         )}
@@ -291,6 +296,12 @@ export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
                                 {...form.register('amount', { valueAsNumber: true })}
                                 className="bg-slate-950 border-slate-800 text-xs text-white"
                             />
+                            {currentAmount <= 0 && (
+                                <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3 shrink-0" />
+                                    Amount must be greater than 0 ETB (cannot be zero or negative).
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-1.5">
@@ -316,15 +327,17 @@ export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
 
                     <Button
                         type="submit"
-                        disabled={loading || isOverdraftRisk}
+                        disabled={loading || isOverdraftRisk || currentAmount <= 0}
                         className={`w-full font-medium text-xs mt-2 transition-all ${
-                            isOverdraftRisk
+                            isOverdraftRisk || currentAmount <= 0
                                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                                 : 'bg-blue-600 hover:bg-blue-500 text-white'
                         }`}
                     >
                         {loading ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : currentAmount <= 0 ? (
+                            'Enter Amount Greater Than 0'
                         ) : isOverdraftRisk ? (
                             'Insufficient Account Balance'
                         ) : (

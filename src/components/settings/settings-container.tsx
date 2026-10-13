@@ -552,12 +552,23 @@ export function SettingsContainer() {
 
                                     <div className="flex flex-wrap gap-3">
                                         <Button
+                                            onClick={() => setIsChangingPassword(!isChangingPassword)}
+                                            className={`text-xs gap-2 ${
+                                                isChangingPassword
+                                                    ? 'bg-indigo-700 hover:bg-indigo-600 text-white'
+                                                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                                            }`}
+                                        >
+                                            <Lock className="h-3.5 w-3.5" />
+                                            Change Password
+                                        </Button>
+                                        <Button
                                             onClick={async () => {
                                                 if (user?.email) {
                                                     try {
                                                         await sendPasswordResetEmail(getFirebaseAuth(), user.email)
                                                         setResetSent(true)
-                                                        showSuccess(`Password reset email sent to ${user.email}`)
+                                                        showSuccess(`Reset email sent to ${user.email} — check Spam/Junk if not in inbox`)
                                                     } catch (err: unknown) {
                                                         console.error(err instanceof Error ? err.message : err)
                                                     }
@@ -569,16 +580,7 @@ export function SettingsContainer() {
                                             <Key className="h-3.5 w-3.5 mr-2 text-amber-400" />
                                             {resetSent ? 'Reset Email Sent ✓' : 'Send Password Reset Email'}
                                         </Button>
-                                        <Button
-                                            onClick={() => setIsChangingPassword(!isChangingPassword)}
-                                            variant="outline"
-                                            className={`bg-slate-950 border-slate-800 hover:bg-slate-800 text-xs ${
-                                                isChangingPassword ? 'text-emerald-400 border-emerald-500/40' : 'text-white'
-                                            }`}
-                                        >
-                                            <Lock className="h-3.5 w-3.5 mr-2 text-indigo-400" />
-                                            Change Password
-                                        </Button>
+
                                         <Button
                                             onClick={() => setActiveSection('privacy')}
                                             variant="outline"
@@ -588,6 +590,12 @@ export function SettingsContainer() {
                                             View Privacy & Security Controls
                                         </Button>
                                     </div>
+                                    {resetSent && (
+                                        <p className="text-[11px] text-amber-400/80 flex items-center gap-1.5 mt-1">
+                                            <Info className="h-3 w-3 shrink-0" />
+                                            Didn&apos;t receive it? Check your <strong>Spam / Junk</strong> folder. Or use <strong>Change Password</strong> above to update directly.
+                                        </p>
+                                    )}
 
                                     {/* Change Password Panel */}
                                     {isChangingPassword && (

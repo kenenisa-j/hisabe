@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PiggyBank, Loader2, ArrowRight } from 'lucide-react'
+import { PiggyBank, Loader2, ArrowRight, AlertCircle } from 'lucide-react'
 
 const depositSchema = z.object({
     accountId: z.string().min(1, 'Select a funding account'),
@@ -47,10 +47,16 @@ export function DepositModal({ goal, accounts, open, onOpenChange }: DepositModa
     })
 
     const selectedAccountId = useWatch({ control: form.control, name: 'accountId' })
+    const currentAmount = useWatch({ control: form.control, name: 'amount' }) || 0
 
     if (!goal) return null
 
     const onSubmit = async (values: DepositFormValues) => {
+        if (values.amount <= 0) {
+            setError('Deposit allocation amount must be greater than 0 ETB. Negative numbers and zero are not allowed.')
+            return
+        }
+
         setLoading(true)
         setError('')
 
@@ -131,15 +137,27 @@ export function DepositModal({ goal, accounts, open, onOpenChange }: DepositModa
                             {...form.register('amount', { valueAsNumber: true })}
                             className="bg-slate-950 border-slate-800 text-sm font-semibold text-white focus-visible:ring-emerald-500"
                         />
+                        {currentAmount <= 0 && (
+                            <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3 shrink-0" />
+                                Amount must be greater than 0 ETB (cannot be zero or negative).
+                            </p>
+                        )}
                     </div>
 
                     <Button
                         type="submit"
-                        disabled={loading}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium mt-2 gap-2"
+                        disabled={loading || currentAmount <= 0}
+                        className={`w-full font-medium mt-2 gap-2 transition-all ${
+                            currentAmount <= 0
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        }`}
                     >
                         {loading ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : currentAmount <= 0 ? (
+                            'Enter Amount Greater Than 0'
                         ) : (
                             <>
                                 Confirm Transfer <ArrowRight className="h-4 w-4" />
