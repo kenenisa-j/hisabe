@@ -1224,8 +1224,10 @@ export function SettingsContainer() {
                                         <Label className="text-[11px] text-slate-400">Estimated Taxable Income</Label>
                                         <Input
                                             type="number"
-                                            value={settings.tax_estimated_income}
-                                            onChange={(e) => updateSettings({ tax_estimated_income: parseFloat(e.target.value) || 0 })}
+                                            value={settings.tax_estimated_income === 0 ? '' : settings.tax_estimated_income}
+                                            placeholder="0"
+                                            onChange={(e) => updateSettings({ tax_estimated_income: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                                            onFocus={(e) => { if (settings.tax_estimated_income === 0) e.target.value = '' }}
                                             className="mt-1 bg-slate-900 border-slate-800 text-white text-xs"
                                         />
                                     </div>
@@ -1234,8 +1236,10 @@ export function SettingsContainer() {
                                         <Label className="text-[11px] text-slate-400">Estimated Tax</Label>
                                         <Input
                                             type="number"
-                                            value={settings.tax_estimated_tax}
-                                            onChange={(e) => updateSettings({ tax_estimated_tax: parseFloat(e.target.value) || 0 })}
+                                            value={settings.tax_estimated_tax === 0 ? '' : settings.tax_estimated_tax}
+                                            placeholder="0"
+                                            onChange={(e) => updateSettings({ tax_estimated_tax: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                                            onFocus={(e) => { if (settings.tax_estimated_tax === 0) e.target.value = '' }}
                                             className="mt-1 bg-slate-900 border-slate-800 text-white text-xs"
                                         />
                                     </div>
@@ -1244,12 +1248,15 @@ export function SettingsContainer() {
                                         <Label className="text-[11px] text-slate-400">Tax Already Paid</Label>
                                         <Input
                                             type="number"
-                                            value={settings.tax_paid}
-                                            onChange={(e) => updateSettings({ tax_paid: parseFloat(e.target.value) || 0 })}
+                                            value={settings.tax_paid === 0 ? '' : settings.tax_paid}
+                                            placeholder="0"
+                                            onChange={(e) => updateSettings({ tax_paid: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                                            onFocus={(e) => { if (settings.tax_paid === 0) e.target.value = '' }}
                                             className="mt-1 bg-slate-900 border-slate-800 text-white text-xs"
                                         />
                                     </div>
                                 </div>
+
 
                                 <div className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-lg">
                                     <div>
