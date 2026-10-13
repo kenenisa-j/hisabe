@@ -112,6 +112,11 @@ export function SettingsContainer() {
     const [deleteConfirmText, setDeleteConfirmText] = useState('')
     const [isDeletingAccount, setIsDeletingAccount] = useState(false)
 
+    // Tax field local string state — allows clearing without React fighting back
+    const [taxIncomeStr, setTaxIncomeStr] = useState(String(settings.tax_estimated_income ?? ''))
+    const [taxEstimatedStr, setTaxEstimatedStr] = useState(String(settings.tax_estimated_tax ?? ''))
+    const [taxPaidStr, setTaxPaidStr] = useState(String(settings.tax_paid ?? ''))
+
     useEffect(() => {
         // Check Passkey WebAuthn browser support
         if (typeof window !== 'undefined' && window.PublicKeyCredential) {
@@ -1223,11 +1228,16 @@ export function SettingsContainer() {
                                     <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
                                         <Label className="text-[11px] text-slate-400">Estimated Taxable Income</Label>
                                         <Input
-                                            type="number"
-                                            value={settings.tax_estimated_income === 0 ? '' : settings.tax_estimated_income}
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={taxIncomeStr}
                                             placeholder="0"
-                                            onChange={(e) => updateSettings({ tax_estimated_income: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                                            onFocus={(e) => { if (settings.tax_estimated_income === 0) e.target.value = '' }}
+                                            onChange={(e) => {
+                                                const raw = e.target.value
+                                                setTaxIncomeStr(raw)
+                                                const n = parseFloat(raw)
+                                                updateSettings({ tax_estimated_income: isNaN(n) ? 0 : n })
+                                            }}
                                             className="mt-1 bg-slate-900 border-slate-800 text-white text-xs"
                                         />
                                     </div>
@@ -1235,11 +1245,16 @@ export function SettingsContainer() {
                                     <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
                                         <Label className="text-[11px] text-slate-400">Estimated Tax</Label>
                                         <Input
-                                            type="number"
-                                            value={settings.tax_estimated_tax === 0 ? '' : settings.tax_estimated_tax}
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={taxEstimatedStr}
                                             placeholder="0"
-                                            onChange={(e) => updateSettings({ tax_estimated_tax: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                                            onFocus={(e) => { if (settings.tax_estimated_tax === 0) e.target.value = '' }}
+                                            onChange={(e) => {
+                                                const raw = e.target.value
+                                                setTaxEstimatedStr(raw)
+                                                const n = parseFloat(raw)
+                                                updateSettings({ tax_estimated_tax: isNaN(n) ? 0 : n })
+                                            }}
                                             className="mt-1 bg-slate-900 border-slate-800 text-white text-xs"
                                         />
                                     </div>
@@ -1247,11 +1262,16 @@ export function SettingsContainer() {
                                     <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
                                         <Label className="text-[11px] text-slate-400">Tax Already Paid</Label>
                                         <Input
-                                            type="number"
-                                            value={settings.tax_paid === 0 ? '' : settings.tax_paid}
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={taxPaidStr}
                                             placeholder="0"
-                                            onChange={(e) => updateSettings({ tax_paid: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                                            onFocus={(e) => { if (settings.tax_paid === 0) e.target.value = '' }}
+                                            onChange={(e) => {
+                                                const raw = e.target.value
+                                                setTaxPaidStr(raw)
+                                                const n = parseFloat(raw)
+                                                updateSettings({ tax_paid: isNaN(n) ? 0 : n })
+                                            }}
                                             className="mt-1 bg-slate-900 border-slate-800 text-white text-xs"
                                         />
                                     </div>
