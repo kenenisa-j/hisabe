@@ -74,11 +74,18 @@ export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
         currentAmount > selectedAccount.balance
 
     const onSubmit = async (values: DebtFormValues) => {
+        if (isOverdraftRisk) {
+            setError(
+                `You cannot lend ${formatCurrency(values.amount, 'ETB')} because ${selectedAccount?.name} only has ${formatCurrency(selectedAccount?.balance || 0, 'ETB')} in your account. You cannot lend more than what you have.`
+            )
+            return
+        }
+
         setLoading(true)
         setError('')
 
         try {
-            await createDebt({
+            const res = await createDebt({
                 personName: values.personName.trim(),
                 type: values.type as DebtType,
                 amount: values.amount,
@@ -86,6 +93,10 @@ export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
                 dueDate: values.dueDate || null,
                 notes: values.notes || null,
             })
+            if (!res.success) {
+                setError(res.error || 'Failed to add debt entry')
+                return
+            }
             setOpen(false)
             form.reset({
                 personName: '',
@@ -245,11 +256,16 @@ export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
                         )}
 
                         {isOverdraftRisk && (
-                            <div className="flex items-center gap-1.5 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px]">
-                                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                                <span>
-                                    Notice: Loan amount ({formatCurrency(currentAmount, 'ETB')}) exceeds current balance ({formatCurrency(selectedAccount?.balance || 0, 'ETB')}).
-                                </span>
+                            <div className="flex items-start gap-2 p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium">
+                                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+                                <div className="space-y-0.5">
+                                    <p className="font-semibold text-rose-200">
+                                        Cannot Lend More Than Available Balance
+                                    </p>
+                                    <p className="text-[11px] text-rose-300/90 leading-relaxed">
+                                        You are trying to lend {formatCurrency(currentAmount, 'ETB')}, but {selectedAccount?.name} only has {formatCurrency(selectedAccount?.balance || 0, 'ETB')} in your account. You cannot lend more than what you have.
+                                    </p>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -300,10 +316,20 @@ export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
 
                     <Button
                         type="submit"
-                        disabled={loading}
-                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs mt-2"
+                        disabled={loading || isOverdraftRisk}
+                        className={`w-full font-medium text-xs mt-2 transition-all ${
+                            isOverdraftRisk
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                                : 'bg-blue-600 hover:bg-blue-500 text-white'
+                        }`}
                     >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Debt Record'}
+                        {loading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : isOverdraftRisk ? (
+                            'Insufficient Account Balance'
+                        ) : (
+                            'Save Debt Record'
+                        )}
                     </Button>
                 </form>
             </DialogContent>

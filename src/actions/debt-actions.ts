@@ -58,101 +58,132 @@ export async function getDebts(): Promise<Debt[]> {
  * - When lending (owed_to_me): deducts money from the account (- balance) with an overdraft guard and logs an expense transaction.
  */
 export async function createDebt(input: CreateDebtInput) {
-    const userId = await getAuthenticatedUser()
-    if (!userId) throw new Error('Unauthorized')
+    try {
+        const userId = await getAuthenticatedUser()
+        if (!userId) return { success: false, error: 'Unauthorized' }
 
-    const { personName, type, amount, currency = 'ETB', dueDate, notes, accountId } = input
+        const { personName, type, amount, currency = 'ETB', dueDate, notes, accountId } = input
 
-    if (amount <= 0) throw new Error('Amount must be greater than zero')
-
-    if (accountId) {
-        const isOwner = await verifyAccountOwnership(accountId, userId)
-        if (!isOwner) {
-            throw new Error('Account not found or access denied.')
+        if (!personName || !personName.trim()) {
+            return { success: false, error: 'Person or entity name is required' }
         }
 
-        const isBorrowed = type === 'owed_by_me'
-        const txnType = isBorrowed ? 'income' : 'expense'
-        const description = isBorrowed
-            ? `Borrowed from ${personName}${notes ? ` (${notes})` : ''}`
-            : `Loan extended to ${personName}${notes ? ` (${notes})` : ''}`
+        if (amount <= 0) {
+            return { success: false, error: 'Amount must be greater than zero' }
+        }
 
-        const [category] = await sql`
-            SELECT id FROM categories
-            WHERE (user_id = ${userId} OR user_id IS NULL) AND type = ${txnType}
-            ORDER BY created_at ASC LIMIT 1
-        `
-        const categoryId = category?.id || null
+        if (accountId) {
+            const isOwner = await verifyAccountOwnership(accountId, userId)
+            if (!isOwner) {
+                return { success: false, error: 'Account not found or access denied.' }
+            }
 
-        // Overdraft guard for lending (money leaving our account)
-        const accountUpdateQuery = !isBorrowed
-            ? sqlRaw`
-               WITH guard AS (
-                 SELECT 1 / (CASE WHEN allow_overdraft = false AND balance < ${amount} THEN 0 ELSE 1 END) as ok
-                 FROM accounts
-                 WHERE id = ${accountId} AND user_id = ${userId}
-               )
-               UPDATE accounts
-               SET balance = balance - ${amount}, updated_at = NOW()
-               FROM guard
-               WHERE accounts.id = ${accountId} AND accounts.user_id = ${userId}
-                 AND guard.ok = 1`
-            : sqlRaw`
-               UPDATE accounts
-               SET balance = balance + ${amount}, updated_at = NOW()
-               WHERE id = ${accountId} AND user_id = ${userId}`
+            const [account] = await sql`
+                SELECT id, name, balance, allow_overdraft FROM accounts WHERE id = ${accountId} AND user_id = ${userId}
+            `
+            if (!account) {
+                return { success: false, error: 'Account not found.' }
+            }
 
-        await sql.transaction([
-            sqlRaw`
-              INSERT INTO debts (
-                user_id, account_id, person_name, type, amount, currency, due_date, notes
-              ) VALUES (
-                ${userId}, ${accountId}, ${personName}, ${type}, ${amount}, ${currency},
-                ${dueDate ? dueDate : null}::date, ${notes || null}
-              )
-            `,
-            sqlRaw`
-              INSERT INTO transactions (
-                user_id,
-                account_id,
-                category_id,
-                type,
-                amount,
-                base_amount_etb,
-                description,
-                transaction_date,
-                created_at
-              ) VALUES (
-                ${userId},
-                ${accountId},
-                ${categoryId},
-                ${txnType},
-                ${amount},
-                ${amount},
-                ${description},
-                CURRENT_DATE,
-                NOW()
-              )
-            `,
-            accountUpdateQuery,
-        ])
-    } else {
-        await sql`
-        INSERT INTO debts (
-          user_id, account_id, person_name, type, amount, currency, due_date, notes
-        ) VALUES (
-          ${userId}, NULL, ${personName}, ${type}, ${amount}, ${currency},
-          ${dueDate ? dueDate : null}::date, ${notes || null}
-        )
-      `
+            const isBorrowed = type === 'owed_by_me'
+            const accountBalance = parseFloat(account.balance)
+
+            // If lending money to someone (owed_to_me), verify user has enough balance
+            if (!isBorrowed && !account.allow_overdraft && accountBalance < amount) {
+                return {
+                    success: false,
+                    error: `You cannot lend ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency} because ${account.name} only has ${accountBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency} in your account. You cannot lend more than what you have.`,
+                }
+            }
+
+            const txnType = isBorrowed ? 'income' : 'expense'
+            const description = isBorrowed
+                ? `Borrowed from ${personName}${notes ? ` (${notes})` : ''}`
+                : `Loan extended to ${personName}${notes ? ` (${notes})` : ''}`
+
+            const [category] = await sql`
+                SELECT id FROM categories
+                WHERE (user_id = ${userId} OR user_id IS NULL) AND type = ${txnType}
+                ORDER BY created_at ASC LIMIT 1
+            `
+            const categoryId = category?.id || null
+
+            // Overdraft guard for lending (money leaving our account)
+            const accountUpdateQuery = !isBorrowed
+                ? sqlRaw`
+                   WITH guard AS (
+                     SELECT 1 / (CASE WHEN allow_overdraft = false AND balance < ${amount} THEN 0 ELSE 1 END) as ok
+                     FROM accounts
+                     WHERE id = ${accountId} AND user_id = ${userId}
+                   )
+                   UPDATE accounts
+                   SET balance = balance - ${amount}, updated_at = NOW()
+                   FROM guard
+                   WHERE accounts.id = ${accountId} AND accounts.user_id = ${userId}
+                     AND guard.ok = 1`
+                : sqlRaw`
+                   UPDATE accounts
+                   SET balance = balance + ${amount}, updated_at = NOW()
+                   WHERE id = ${accountId} AND user_id = ${userId}`
+
+            await sql.transaction([
+                sqlRaw`
+                  INSERT INTO debts (
+                    user_id, account_id, person_name, type, amount, currency, due_date, notes
+                  ) VALUES (
+                    ${userId}, ${accountId}, ${personName}, ${type}, ${amount}, ${currency},
+                    ${dueDate ? dueDate : null}::date, ${notes || null}
+                  )
+                `,
+                sqlRaw`
+                  INSERT INTO transactions (
+                    user_id,
+                    account_id,
+                    category_id,
+                    type,
+                    amount,
+                    base_amount_etb,
+                    description,
+                    transaction_date,
+                    created_at
+                  ) VALUES (
+                    ${userId},
+                    ${accountId},
+                    ${categoryId},
+                    ${txnType},
+                    ${amount},
+                    ${amount},
+                    ${description},
+                    CURRENT_DATE,
+                    NOW()
+                  )
+                `,
+                accountUpdateQuery,
+            ])
+        } else {
+            await sql`
+            INSERT INTO debts (
+              user_id, account_id, person_name, type, amount, currency, due_date, notes
+            ) VALUES (
+              ${userId}, NULL, ${personName}, ${type}, ${amount}, ${currency},
+              ${dueDate ? dueDate : null}::date, ${notes || null}
+            )
+          `
+        }
+
+        revalidatePath('/debts')
+        revalidatePath('/accounts')
+        revalidatePath('/transactions')
+        revalidatePath('/dashboard')
+        revalidatePath('/')
+        return { success: true }
+    } catch (err: unknown) {
+        console.error('Error in createDebt:', err)
+        return {
+            success: false,
+            error: err instanceof Error ? err.message : 'Failed to add debt entry',
+        }
     }
-
-    revalidatePath('/debts')
-    revalidatePath('/accounts')
-    revalidatePath('/transactions')
-    revalidatePath('/dashboard')
-    revalidatePath('/')
-    return { success: true }
 }
 
 /**
