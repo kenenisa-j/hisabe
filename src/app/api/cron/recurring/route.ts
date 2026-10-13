@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sql } from '@/lib/db'
+import { sql, sqlRaw } from '@/lib/db'
 import { calculateNextDueDate } from '@/lib/recurring-utils'
 
 // Force dynamic execution (never cache cron API responses)
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
                 const balanceDelta = item.type === 'income' ? amount : -amount
 
                 await sql.transaction([
-                    sql`
+                    sqlRaw`
                         INSERT INTO transactions (
                           user_id, account_id, category_id, type, amount, base_amount_etb, description, transaction_date
                         ) VALUES (
@@ -65,17 +65,17 @@ export async function GET(req: NextRequest) {
                           ${amount}, ${amount}, ${item.description || 'Auto Recurring Entry'}, ${dueDateStr}::date
                         )
                     `,
-                    sql`
+                    sqlRaw`
                         UPDATE accounts
                         SET balance = balance + ${balanceDelta}, updated_at = NOW()
                         WHERE id = ${item.account_id} AND user_id = ${item.user_id}
                     `,
-                    sql`
+                    sqlRaw`
                         UPDATE recurring_transactions
                         SET next_due_date = ${nextDueDateStr}::date, updated_at = NOW()
                         WHERE id = ${item.id} AND user_id = ${item.user_id} AND next_due_date = ${dueDateStr}::date
                     `,
-                    sql`
+                    sqlRaw`
                         INSERT INTO recurring_execution_logs (
                           recurring_id, user_id, status, amount
                         ) VALUES (

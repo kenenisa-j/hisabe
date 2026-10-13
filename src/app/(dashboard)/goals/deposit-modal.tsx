@@ -55,11 +55,15 @@ export function DepositModal({ goal, accounts, open, onOpenChange }: DepositModa
         setError('')
 
         try {
-            await depositToGoal({
+            const res = await depositToGoal({
                 goalId: goal.id,
                 accountId: values.accountId,
                 amount: values.amount,
             })
+            if (!res.success) {
+                setError(res.error || 'Failed to process deposit allocation')
+                return
+            }
             onOpenChange(false)
             form.reset()
         } catch (err: unknown) {

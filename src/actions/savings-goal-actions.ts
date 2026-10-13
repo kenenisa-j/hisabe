@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { sql } from '@/lib/db'
+import { sql, sqlRaw } from '@/lib/db'
 import { ensureTablesExist } from '@/lib/db/init-db'
 import { getAuthenticatedUser } from '@/lib/auth-user'
 export type { SavingsGoalProgress, CreateSavingsGoalInput, UpdateGoalContributionInput } from '@/types/savings-goal'
@@ -79,6 +79,8 @@ export async function createSavingsGoal(input: CreateSavingsGoalInput) {
     if (!name.trim()) throw new Error('Goal name is required')
     if (targetAmount <= 0) throw new Error('Target amount must be greater than zero')
 
+    await ensureTablesExist()
+
     await sql`
     INSERT INTO savings_goals (user_id, name, target_amount, current_amount, target_date)
     VALUES (${userId}, ${name.trim()}, ${targetAmount}, 0.00, ${targetDate}::date)
@@ -92,32 +94,42 @@ export async function createSavingsGoal(input: CreateSavingsGoalInput) {
  * Deposit or withdraw funds from a goal balance (without touching account balance)
  */
 export async function updateGoalContribution(input: UpdateGoalContributionInput) {
-    const userId = await getAuthenticatedUser()
-    if (!userId) throw new Error('Unauthorized')
+    try {
+        const userId = await getAuthenticatedUser()
+        if (!userId) return { success: false, error: 'Unauthorized' }
 
-    const { goalId, amount, type } = input
-    if (amount <= 0) throw new Error('Amount must be greater than zero')
+        const { goalId, amount, type } = input
+        if (amount <= 0) return { success: false, error: 'Amount must be greater than zero' }
 
-    const [existing] = await sql`
-    SELECT current_amount, target_amount FROM savings_goals 
-    WHERE id = ${goalId} AND user_id = ${userId}
-  `
+        await ensureTablesExist()
 
-    if (!existing) throw new Error('Savings goal not found')
+        const [existing] = await sql`
+        SELECT current_amount, target_amount FROM savings_goals 
+        WHERE id = ${goalId} AND user_id = ${userId}
+      `
 
-    const currentVal = parseFloat(existing.current_amount)
-    const newVal = type === 'deposit' ? currentVal + amount : currentVal - amount
+        if (!existing) return { success: false, error: 'Savings goal not found' }
 
-    if (newVal < 0) throw new Error('Withdrawal amount exceeds goal balance')
+        const currentVal = parseFloat(existing.current_amount)
+        const newVal = type === 'deposit' ? currentVal + amount : currentVal - amount
 
-    await sql`
-    UPDATE savings_goals
-    SET current_amount = ${newVal}, updated_at = NOW()
-    WHERE id = ${goalId} AND user_id = ${userId}
-  `
+        if (newVal < 0) return { success: false, error: 'Withdrawal amount exceeds goal balance' }
 
-    revalidatePath('/goals')
-    return { success: true }
+        await sql`
+        UPDATE savings_goals
+        SET current_amount = ${newVal}, updated_at = NOW()
+        WHERE id = ${goalId} AND user_id = ${userId}
+      `
+
+        revalidatePath('/goals')
+        return { success: true }
+    } catch (err: unknown) {
+        console.error('Error in updateGoalContribution:', err)
+        return {
+            success: false,
+            error: err instanceof Error ? err.message : 'Failed to update goal contribution',
+        }
+    }
 }
 
 /**
@@ -146,54 +158,86 @@ export interface DepositToGoalInput {
  * Deposit money from a financial account into a savings goal and record the
  * deduction as an expense transaction. This keeps accounts/transactions in sync.
  *
- * NOTE: The goal deposit is recorded as an EXPENSE of type "Savings Allocation"
- * so it appears in transaction history without double-counting as a separate expense.
+ * NOTE: Uses sqlRaw inside sql.transaction to properly pass query templates to Neon.
  */
 export async function depositToGoal(input: DepositToGoalInput) {
-    const userId = await getAuthenticatedUser()
-    if (!userId) throw new Error('Unauthorized')
+    try {
+        const userId = await getAuthenticatedUser()
+        if (!userId) return { success: false, error: 'Unauthorized' }
 
-    const { goalId, accountId, amount } = input
-    if (amount <= 0) throw new Error('Deposit amount must be greater than zero')
+        const { goalId, accountId, amount } = input
+        if (amount <= 0) return { success: false, error: 'Deposit amount must be greater than zero' }
 
-    // Check account balance
-    const [account] = await sql`
-    SELECT id, balance, name FROM accounts WHERE id = ${accountId} AND user_id = ${userId}
-  `
-    if (!account) throw new Error('Account not found')
-    if (parseFloat(account.balance) < amount) throw new Error('Insufficient account funds')
+        await ensureTablesExist()
 
-    // Fetch goal
-    const [goal] = await sql`
-    SELECT id, name, current_amount FROM savings_goals WHERE id = ${goalId} AND user_id = ${userId}
-  `
-    if (!goal) throw new Error('Savings goal not found')
+        // Check account balance and overdraft permission
+        const [account] = await sql`
+        SELECT id, balance, name, allow_overdraft FROM accounts WHERE id = ${accountId} AND user_id = ${userId}
+      `
+        if (!account) return { success: false, error: 'Account not found' }
+        if (!account.allow_overdraft && parseFloat(account.balance) < amount) {
+            return {
+                success: false,
+                error: `Insufficient account funds. Available: ${parseFloat(account.balance).toFixed(2)} ETB`,
+            }
+        }
 
-    // Atomically 1) update goal balance, 2) decrease account balance, 3) log transaction
-    await sql.transaction([
-        sql`
-          UPDATE savings_goals 
-          SET current_amount = current_amount + ${amount}, updated_at = NOW() 
-          WHERE id = ${goalId} AND user_id = ${userId}
-        `,
-        sql`
-          UPDATE accounts 
-          SET balance = balance - ${amount}, updated_at = NOW() 
-          WHERE id = ${accountId} AND user_id = ${userId}
-        `,
-        sql`
-          INSERT INTO transactions (
-            user_id, account_id, type, amount, base_amount_etb, description, transaction_date, created_at
-          ) VALUES (
-            ${userId}, ${accountId}, 'expense', ${amount}, ${amount},
-            ${`Savings Allocation: ${goal.name}`}, CURRENT_DATE, NOW()
-          )
+        // Fetch goal
+        const [goal] = await sql`
+        SELECT id, name, current_amount FROM savings_goals WHERE id = ${goalId} AND user_id = ${userId}
+      `
+        if (!goal) return { success: false, error: 'Savings goal not found' }
+
+        // Find default expense category or null
+        const [category] = await sql`
+            SELECT id FROM categories
+            WHERE (user_id = ${userId} OR user_id IS NULL) AND type = 'expense'
+            ORDER BY created_at ASC LIMIT 1
         `
-    ])
+        const categoryId = category?.id || null
 
-    revalidatePath('/goals')
-    revalidatePath('/dashboard')
-    revalidatePath('/accounts')
-    revalidatePath('/transactions')
-    return { success: true }
+        // Overdraft guard query
+        const accountUpdateQuery = sqlRaw`
+            WITH guard AS (
+                SELECT 1 / (CASE WHEN allow_overdraft = false AND balance < ${amount} THEN 0 ELSE 1 END) as ok
+                FROM accounts
+                WHERE id = ${accountId} AND user_id = ${userId}
+            )
+            UPDATE accounts
+            SET balance = balance - ${amount}, updated_at = NOW()
+            FROM guard
+            WHERE accounts.id = ${accountId} AND accounts.user_id = ${userId}
+              AND guard.ok = 1
+        `
+
+        // Atomically 1) update goal balance, 2) decrease account balance, 3) log transaction using sqlRaw
+        await sql.transaction([
+            sqlRaw`
+              UPDATE savings_goals 
+              SET current_amount = current_amount + ${amount}, updated_at = NOW() 
+              WHERE id = ${goalId} AND user_id = ${userId}
+            `,
+            accountUpdateQuery,
+            sqlRaw`
+              INSERT INTO transactions (
+                user_id, account_id, category_id, type, amount, base_amount_etb, description, transaction_date, created_at
+              ) VALUES (
+                ${userId}, ${accountId}, ${categoryId}, 'expense', ${amount}, ${amount},
+                ${`Savings Allocation: ${goal.name}`}, CURRENT_DATE, NOW()
+              )
+            `,
+        ])
+
+        revalidatePath('/goals')
+        revalidatePath('/dashboard')
+        revalidatePath('/accounts')
+        revalidatePath('/transactions')
+        return { success: true }
+    } catch (err: unknown) {
+        console.error('Error in depositToGoal:', err)
+        return {
+            success: false,
+            error: err instanceof Error ? err.message : 'Failed to process deposit allocation',
+        }
+    }
 }
