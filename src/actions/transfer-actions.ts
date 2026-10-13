@@ -106,8 +106,14 @@ export async function createTransfer(input: CreateTransferInput) {
         revalidatePath('/accounts')
 
         return { success: true }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Transfer error:', error)
-        return { success: false, error: 'Failed to complete transfer.' }
+        if (error?.code === '22012') {
+            return {
+                success: false,
+                error: 'The source account does not have enough balance to complete this transfer. Please add funds or choose a different account.',
+            }
+        }
+        return { success: false, error: 'Failed to complete the transfer. Please try again.' }
     }
 }

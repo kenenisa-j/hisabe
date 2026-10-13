@@ -98,9 +98,15 @@ export async function createTransaction(input: TransactionFormValues) {
         revalidatePath('/accounts')
 
         return { success: true }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Unexpected transaction error:', error)
-        return { success: false, error: 'An unexpected error occurred.' }
+        if (error?.code === '22012') {
+            return {
+                success: false,
+                error: 'This account does not have enough balance to cover this expense. Please add funds or choose a different account.',
+            }
+        }
+        return { success: false, error: 'An unexpected error occurred. Please try again.' }
     }
 }
 
@@ -248,9 +254,15 @@ export async function updateTransaction(
         revalidatePath('/accounts')
 
         return { success: true }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Unexpected update error:', error)
-        return { success: false, error: 'An unexpected error occurred.' }
+        if (error?.code === '22012') {
+            return {
+                success: false,
+                error: 'This account does not have enough balance to cover this expense. Please add funds or choose a different account.',
+            }
+        }
+        return { success: false, error: 'An unexpected error occurred. Please try again.' }
     }
 }
 
@@ -299,8 +311,8 @@ export async function deleteTransaction(transactionId: string) {
         revalidatePath('/accounts')
 
         return { success: true }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Unexpected delete error:', error)
-        return { success: false, error: 'An unexpected error occurred.' }
+        return { success: false, error: 'An unexpected error occurred. Please try again.' }
     }
 }
