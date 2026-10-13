@@ -12,7 +12,13 @@ export default async function DebtsPage() {
     return (
         <DebtsContainer
             debts={debts}
-            accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
+            accounts={accounts.map((a) => ({
+                id: a.id,
+                name: a.name,
+                type: a.type,
+                balance: a.balance,
+                currency: a.currency,
+            }))}
         />
     )
 }

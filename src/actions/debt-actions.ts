@@ -8,7 +8,7 @@ export type { Debt, CreateDebtInput, RecordRepaymentInput } from '@/types/debt'
 import { Debt, CreateDebtInput, RecordRepaymentInput } from '@/types/debt'
 
 /**
- * Fetch all debts for the logged-in user with calculated remaining balances
+ * Fetch all debts for the logged-in user with calculated remaining balances and linked account info
  */
 export async function getDebts(): Promise<Debt[]> {
     const userId = await getAuthenticatedUser()
@@ -16,13 +16,15 @@ export async function getDebts(): Promise<Debt[]> {
 
     const rows = await sql`
     SELECT 
-      id, user_id, person_name, type, amount, paid_amount, currency,
-      due_date, status, notes, created_at, updated_at
-    FROM debts
-    WHERE user_id = ${userId}
+      d.id, d.user_id, d.account_id, d.person_name, d.type, d.amount, d.paid_amount, d.currency,
+      d.due_date, d.status, d.notes, d.created_at, d.updated_at,
+      a.name AS account_name, a.type AS account_type
+    FROM debts d
+    LEFT JOIN accounts a ON d.account_id = a.id
+    WHERE d.user_id = ${userId}
     ORDER BY 
-      CASE WHEN status = 'settled' THEN 2 ELSE 1 END,
-      due_date ASC NULLS LAST
+      CASE WHEN d.status = 'settled' THEN 2 ELSE 1 END,
+      d.due_date ASC NULLS LAST
   `
 
     return rows.map((r) => {
@@ -31,6 +33,9 @@ export async function getDebts(): Promise<Debt[]> {
         return {
             id: r.id,
             userId: r.user_id,
+            accountId: r.account_id ?? null,
+            accountName: r.account_name ?? null,
+            accountType: r.account_type ?? null,
             personName: r.person_name,
             type: r.type,
             amount: total,
@@ -47,26 +52,106 @@ export async function getDebts(): Promise<Debt[]> {
 }
 
 /**
- * Add a new debt or loan entry
+ * Add a new debt or loan entry.
+ * If an accountId is provided:
+ * - When borrowing (owed_by_me): deposits money into the account (+ balance) and logs an income transaction.
+ * - When lending (owed_to_me): deducts money from the account (- balance) with an overdraft guard and logs an expense transaction.
  */
 export async function createDebt(input: CreateDebtInput) {
     const userId = await getAuthenticatedUser()
     if (!userId) throw new Error('Unauthorized')
 
-    const { personName, type, amount, currency = 'ETB', dueDate, notes } = input
+    const { personName, type, amount, currency = 'ETB', dueDate, notes, accountId } = input
 
     if (amount <= 0) throw new Error('Amount must be greater than zero')
 
-    await sql`
-    INSERT INTO debts (
-      user_id, person_name, type, amount, currency, due_date, notes
-    ) VALUES (
-      ${userId}, ${personName}, ${type}, ${amount}, ${currency},
-      ${dueDate ? dueDate : null}::date, ${notes || null}
-    )
-  `
+    if (accountId) {
+        const isOwner = await verifyAccountOwnership(accountId, userId)
+        if (!isOwner) {
+            throw new Error('Account not found or access denied.')
+        }
+
+        const isBorrowed = type === 'owed_by_me'
+        const txnType = isBorrowed ? 'income' : 'expense'
+        const description = isBorrowed
+            ? `Borrowed from ${personName}${notes ? ` (${notes})` : ''}`
+            : `Loan extended to ${personName}${notes ? ` (${notes})` : ''}`
+
+        const [category] = await sql`
+            SELECT id FROM categories
+            WHERE (user_id = ${userId} OR user_id IS NULL) AND type = ${txnType}
+            ORDER BY created_at ASC LIMIT 1
+        `
+        const categoryId = category?.id || null
+
+        // Overdraft guard for lending (money leaving our account)
+        const accountUpdateQuery = !isBorrowed
+            ? sqlRaw`
+               WITH guard AS (
+                 SELECT 1 / (CASE WHEN allow_overdraft = false AND balance < ${amount} THEN 0 ELSE 1 END) as ok
+                 FROM accounts
+                 WHERE id = ${accountId} AND user_id = ${userId}
+               )
+               UPDATE accounts
+               SET balance = balance - ${amount}, updated_at = NOW()
+               FROM guard
+               WHERE accounts.id = ${accountId} AND accounts.user_id = ${userId}
+                 AND guard.ok = 1`
+            : sqlRaw`
+               UPDATE accounts
+               SET balance = balance + ${amount}, updated_at = NOW()
+               WHERE id = ${accountId} AND user_id = ${userId}`
+
+        await sql.transaction([
+            sqlRaw`
+              INSERT INTO debts (
+                user_id, account_id, person_name, type, amount, currency, due_date, notes
+              ) VALUES (
+                ${userId}, ${accountId}, ${personName}, ${type}, ${amount}, ${currency},
+                ${dueDate ? dueDate : null}::date, ${notes || null}
+              )
+            `,
+            sqlRaw`
+              INSERT INTO transactions (
+                user_id,
+                account_id,
+                category_id,
+                type,
+                amount,
+                base_amount_etb,
+                description,
+                transaction_date,
+                created_at
+              ) VALUES (
+                ${userId},
+                ${accountId},
+                ${categoryId},
+                ${txnType},
+                ${amount},
+                ${amount},
+                ${description},
+                CURRENT_DATE,
+                NOW()
+              )
+            `,
+            accountUpdateQuery,
+        ])
+    } else {
+        await sql`
+        INSERT INTO debts (
+          user_id, account_id, person_name, type, amount, currency, due_date, notes
+        ) VALUES (
+          ${userId}, NULL, ${personName}, ${type}, ${amount}, ${currency},
+          ${dueDate ? dueDate : null}::date, ${notes || null}
+        )
+      `
+    }
 
     revalidatePath('/debts')
+    revalidatePath('/accounts')
+    revalidatePath('/transactions')
+    revalidatePath('/dashboard')
+    revalidatePath('/')
     return { success: true }
 }
 

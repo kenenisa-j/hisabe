@@ -4,6 +4,8 @@ import { Debt, deleteDebt } from '@/actions/debt-actions'
 import { formatCurrency } from '@/lib/utils'
 import { useUserSettings } from '@/providers/user-settings-provider'
 import { RepaymentModal } from '@/components/debts/repayment-modal'
+import { BankBrandLogo } from '@/components/accounts/bank-brand-logo'
+import { DebtsAccountOption } from '@/components/debts/debts-container'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -11,7 +13,7 @@ import { ArrowUpRight, ArrowDownLeft, Trash2, Calendar } from 'lucide-react'
 
 interface DebtCardProps {
     debt: Debt
-    accounts: { id: string; name: string }[]
+    accounts: DebtsAccountOption[]
 }
 
 export function DebtCard({ debt, accounts }: DebtCardProps) {
@@ -31,8 +33,9 @@ export function DebtCard({ debt, accounts }: DebtCardProps) {
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2.5">
                         <div
-                            className={`p-2 rounded-lg ${isOwedByMe ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
-                                }`}
+                            className={`p-2 rounded-lg ${
+                                isOwedByMe ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
+                            }`}
                         >
                             {isOwedByMe ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
                         </div>
@@ -46,8 +49,9 @@ export function DebtCard({ debt, accounts }: DebtCardProps) {
 
                     <div className="text-right">
                         <span
-                            className={`text-base font-bold ${isOwedByMe ? 'text-rose-400' : 'text-emerald-400'
-                                }`}
+                            className={`text-base font-bold ${
+                                isOwedByMe ? 'text-rose-400' : 'text-emerald-400'
+                            }`}
                         >
                             {formatCurrency(debt.remainingAmount, debt.currency)}
                         </span>
@@ -65,6 +69,29 @@ export function DebtCard({ debt, accounts }: DebtCardProps) {
                     </div>
                     <Progress value={progressPercent} className="h-1.5 bg-slate-950" />
                 </div>
+
+                {/* Linked Bank / Account Info */}
+                {debt.accountName && (
+                    <div className="flex items-center justify-between bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800/60 text-xs">
+                        <span className="text-[11px] text-slate-400">
+                            {isOwedByMe ? 'Deposited to:' : 'Disbursed from:'}
+                        </span>
+                        <div className="flex items-center gap-1.5 font-medium text-slate-200">
+                            <BankBrandLogo
+                                name={debt.accountName}
+                                type={debt.accountType || 'bank'}
+                                size="sm"
+                                className="w-4 h-4 rounded"
+                            />
+                            <span>{debt.accountName}</span>
+                            {debt.accountType && (
+                                <span className="text-[10px] text-slate-500 capitalize">
+                                    ({debt.accountType})
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {debt.notes && (
                     <p className="text-xs text-slate-400 italic bg-slate-950/50 p-2 rounded border border-slate-800/50">

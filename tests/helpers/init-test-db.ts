@@ -169,6 +169,7 @@ export async function initTestDatabase(
             CREATE TABLE IF NOT EXISTS debts (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id TEXT NOT NULL,
+                account_id UUID,
                 person_name VARCHAR(255) NOT NULL,
                 type VARCHAR(50) NOT NULL,
                 amount NUMERIC(15, 2) NOT NULL,
@@ -182,6 +183,8 @@ export async function initTestDatabase(
             );
         `,
         txn`CREATE INDEX IF NOT EXISTS idx_debts_user_id ON debts(user_id);`,
+        txn`ALTER TABLE debts ADD COLUMN IF NOT EXISTS account_id UUID;`,
+        txn`CREATE INDEX IF NOT EXISTS idx_debts_account_id ON debts(account_id);`,
 
         // 5. Core table: transactions
         txn`

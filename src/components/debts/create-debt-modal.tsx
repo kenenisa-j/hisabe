@@ -6,6 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createDebt } from '@/actions/debt-actions'
 import { DebtType } from '@/types/debt'
+import { formatCurrency } from '@/lib/utils'
+import { BankBrandLogo } from '@/components/accounts/bank-brand-logo'
+import { DebtsAccountOption } from '@/components/debts/debts-container'
 
 import {
     Dialog,
@@ -25,19 +28,24 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Loader2 } from 'lucide-react'
+import { Plus, Loader2, ArrowDownLeft, ArrowUpRight, AlertCircle, Building2 } from 'lucide-react'
 
 const debtSchema = z.object({
     personName: z.string().min(1, 'Person or entity name is required'),
     type: z.enum(['owed_by_me', 'owed_to_me']),
     amount: z.number({ message: 'Amount must be greater than 0' }).positive('Amount must be greater than 0'),
+    accountId: z.string().optional(),
     dueDate: z.string().optional(),
     notes: z.string().optional(),
 })
 
 type DebtFormValues = z.infer<typeof debtSchema>
 
-export function CreateDebtModal() {
+interface CreateDebtModalProps {
+    accounts?: DebtsAccountOption[]
+}
+
+export function CreateDebtModal({ accounts = [] }: CreateDebtModalProps) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -48,10 +56,22 @@ export function CreateDebtModal() {
             personName: '',
             type: 'owed_by_me',
             amount: 0,
+            accountId: accounts[0]?.id || '',
             dueDate: '',
             notes: '',
         },
     })
+
+    const selectedType = useWatch({ control: form.control, name: 'type' })
+    const selectedAccountId = useWatch({ control: form.control, name: 'accountId' })
+    const currentAmount = useWatch({ control: form.control, name: 'amount' }) || 0
+
+    const selectedAccount = accounts.find((acc) => acc.id === selectedAccountId)
+    const isOverdraftRisk =
+        selectedType === 'owed_to_me' &&
+        selectedAccount &&
+        selectedAccount.balance !== undefined &&
+        currentAmount > selectedAccount.balance
 
     const onSubmit = async (values: DebtFormValues) => {
         setLoading(true)
@@ -59,14 +79,22 @@ export function CreateDebtModal() {
 
         try {
             await createDebt({
-                personName: values.personName,
+                personName: values.personName.trim(),
                 type: values.type as DebtType,
                 amount: values.amount,
+                accountId: values.accountId && values.accountId !== 'none' ? values.accountId : null,
                 dueDate: values.dueDate || null,
                 notes: values.notes || null,
             })
             setOpen(false)
-            form.reset()
+            form.reset({
+                personName: '',
+                type: 'owed_by_me',
+                amount: 0,
+                accountId: accounts[0]?.id || '',
+                dueDate: '',
+                notes: '',
+            })
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to add debt entry')
         } finally {
@@ -74,15 +102,13 @@ export function CreateDebtModal() {
         }
     }
 
-    const selectedType = useWatch({ control: form.control, name: 'type' })
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger render={<Button className="bg-blue-600 hover:bg-blue-500 text-white gap-2 text-xs font-medium" />}>
                 <Plus className="h-4 w-4" /> Add Debt / Loan
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-[440px] bg-slate-900 border-slate-800 text-white">
+            <DialogContent className="sm:max-w-[460px] bg-slate-900 border-slate-800 text-white max-h-[90vh] overflow-y-auto">
                 <DialogHeader className="pb-2 border-b border-slate-800">
                     <DialogTitle className="text-base font-semibold">New Debt or Loan Entry</DialogTitle>
                 </DialogHeader>
@@ -94,6 +120,7 @@ export function CreateDebtModal() {
                         </div>
                     )}
 
+                    {/* Type selection */}
                     <div className="space-y-1.5">
                         <Label className="text-xs text-slate-300">Type</Label>
                         <Select
@@ -112,6 +139,122 @@ export function CreateDebtModal() {
                         </Select>
                     </div>
 
+                    {/* Bank / Payment Account Selection */}
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs text-slate-300 flex items-center gap-1.5">
+                                <Building2 className="h-3.5 w-3.5 text-blue-400" />
+                                Bank / Payment Account
+                            </Label>
+                            <span className="text-[10px] text-slate-400">
+                                {selectedType === 'owed_by_me' ? 'Account to receive money' : 'Account to disburse money'}
+                            </span>
+                        </div>
+                        <Select
+                            value={selectedAccountId || 'none'}
+                            onValueChange={(val) => form.setValue('accountId', val || '')}
+                        >
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-xs text-white min-h-[40px]">
+                                <SelectValue placeholder="Select Bank / Account">
+                                    {selectedAccount ? (
+                                        <div className="flex items-center justify-between w-full pr-2">
+                                            <div className="flex items-center gap-2">
+                                                <BankBrandLogo
+                                                    name={selectedAccount.name}
+                                                    type={selectedAccount.type || 'bank'}
+                                                    size="sm"
+                                                    className="w-5 h-5 rounded"
+                                                />
+                                                <span className="font-medium text-white">{selectedAccount.name}</span>
+                                            </div>
+                                            {selectedAccount.balance !== undefined && (
+                                                <span className="text-[11px] text-slate-400">
+                                                    Bal: {formatCurrency(selectedAccount.balance, selectedAccount.currency || 'ETB')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <span className="text-slate-400">None (Track without updating bank balance)</span>
+                                    )}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-56">
+                                <SelectItem value="none" className="text-slate-400 text-xs py-2">
+                                    None (Track only — do not change bank balance)
+                                </SelectItem>
+                                {accounts.map((acc) => (
+                                    <SelectItem key={acc.id} value={acc.id} className="text-xs py-2">
+                                        <div className="flex items-center justify-between w-full gap-4">
+                                            <div className="flex items-center gap-2">
+                                                <BankBrandLogo
+                                                    name={acc.name}
+                                                    type={acc.type || 'bank'}
+                                                    size="sm"
+                                                    className="w-5 h-5 rounded"
+                                                />
+                                                <div>
+                                                    <span className="font-medium text-white">{acc.name}</span>
+                                                    <span className="text-[10px] text-slate-500 capitalize ml-1.5">
+                                                        ({acc.type || 'bank'})
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {acc.balance !== undefined && (
+                                                <span className="text-[11px] text-slate-400 font-mono shrink-0">
+                                                    {formatCurrency(acc.balance, acc.currency || 'ETB')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* Interactive Dynamic Effect Indicator */}
+                        {selectedAccount && selectedAccountId !== 'none' && (
+                            <div
+                                className={`p-2.5 rounded-lg border text-[11px] space-y-1 transition-all ${
+                                    selectedType === 'owed_by_me'
+                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                                        : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                                }`}
+                            >
+                                <div className="flex items-center gap-1.5 font-medium">
+                                    {selectedType === 'owed_by_me' ? (
+                                        <>
+                                            <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-400" />
+                                            <span>
+                                                Deposit into <strong>{selectedAccount.name}</strong>
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ArrowUpRight className="h-3.5 w-3.5 text-rose-400" />
+                                            <span>
+                                                Deduct from <strong>{selectedAccount.name}</strong>
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-slate-400 leading-relaxed">
+                                    {selectedType === 'owed_by_me'
+                                        ? `Your ${selectedAccount.name} balance will INCREASE by ${formatCurrency(currentAmount || 0, 'ETB')} and be logged as income.`
+                                        : `Your ${selectedAccount.name} balance will DECREASE by ${formatCurrency(currentAmount || 0, 'ETB')} and be logged as an expense.`}
+                                </p>
+                            </div>
+                        )}
+
+                        {isOverdraftRisk && (
+                            <div className="flex items-center gap-1.5 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px]">
+                                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                <span>
+                                    Notice: Loan amount ({formatCurrency(currentAmount, 'ETB')}) exceeds current balance ({formatCurrency(selectedAccount?.balance || 0, 'ETB')}).
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Person / Entity Name */}
                     <div className="space-y-1.5">
                         <Label className="text-xs text-slate-300">Person / Entity Name</Label>
                         <Input
@@ -121,6 +264,7 @@ export function CreateDebtModal() {
                         />
                     </div>
 
+                    {/* Amount & Due Date */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <Label className="text-xs text-slate-300">Total Amount (ETB)</Label>
@@ -143,6 +287,7 @@ export function CreateDebtModal() {
                         </div>
                     </div>
 
+                    {/* Notes */}
                     <div className="space-y-1.5">
                         <Label className="text-xs text-slate-300">Notes / Purpose (Optional)</Label>
                         <Textarea

@@ -7,9 +7,17 @@ import { formatCurrency } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { HandCoins, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 
+export interface DebtsAccountOption {
+    id: string
+    name: string
+    type?: string
+    balance?: number
+    currency?: string
+}
+
 interface DebtsContainerProps {
     debts: Debt[]
-    accounts: { id: string; name: string }[]
+    accounts: DebtsAccountOption[]
 }
 
 export function DebtsContainer({ debts, accounts }: DebtsContainerProps) {
@@ -30,7 +38,7 @@ export function DebtsContainer({ debts, accounts }: DebtsContainerProps) {
                         Track money borrowed, loans extended, and partial repayments.
                     </p>
                 </div>
-                <CreateDebtModal />
+                <CreateDebtModal accounts={accounts} />
             </div>
 
             {/* Summary KPI Cards */}

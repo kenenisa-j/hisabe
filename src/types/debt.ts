@@ -4,6 +4,9 @@ export type DebtStatus = 'pending' | 'partial' | 'settled'
 export interface Debt {
     id: string
     userId: string
+    accountId?: string | null
+    accountName?: string | null
+    accountType?: string | null
     personName: string
     type: DebtType
     amount: number
@@ -24,6 +27,7 @@ export interface CreateDebtInput {
     currency?: string
     dueDate?: string | null
     notes?: string | null
+    accountId?: string | null
 }
 
 export interface RecordRepaymentInput {
