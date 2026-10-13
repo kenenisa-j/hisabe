@@ -77,7 +77,7 @@ function getAccountBadgeAndIcon(name: string, type: AccountType) {
     if (type === 'telebirr' || lower.includes('telebirr')) {
         return {
             color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-            badgeText: 'Telebirr Mobile',
+            badgeText: 'Mobile Banking',
         }
     }
 

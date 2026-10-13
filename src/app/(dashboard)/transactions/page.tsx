@@ -6,8 +6,14 @@ import { AddTransactionModal } from '@/components/transactions/add-transaction-m
 
 export const revalidate = 0
 
-export default async function TransactionsPage() {
+export default async function TransactionsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ search?: string }>
+}) {
     const userId = await getAuthenticatedUser()
+    const resolvedParams = await searchParams
+    const initialSearch = resolvedParams?.search || ''
 
     const [transactionRows, accountRows, categories] = await Promise.all([
         sql`
@@ -110,6 +116,7 @@ export default async function TransactionsPage() {
                 initialTransactions={transactions}
                 accounts={accounts}
                 categories={categories}
+                initialSearch={initialSearch}
             />
         </div>
     )

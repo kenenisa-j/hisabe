@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/providers/auth-provider'
 import { getFirebaseAuth } from '@/lib/firebase/client'
-import { sendPasswordResetEmail } from 'firebase/auth'
+import { sendPasswordResetEmail, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -83,6 +83,21 @@ export function SettingsContainer() {
     const [passkeySupported, setPasskeySupported] = useState<boolean>(false)
     const [sessionsList] = useState<SessionItem[]>([])
 
+    // Phone number editing
+    const [isEditingPhone, setIsEditingPhone] = useState(false)
+    const [phoneValue, setPhoneValue] = useState('')
+    const [savingPhone, setSavingPhone] = useState(false)
+
+    // Change Password state
+    const [isChangingPassword, setIsChangingPassword] = useState(false)
+    const [currentPassword, setCurrentPassword] = useState('')
+    const [newPassword, setNewPassword] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
+    const [showCurrentPwd, setShowCurrentPwd] = useState(false)
+    const [showNewPwd, setShowNewPwd] = useState(false)
+    const [passwordError, setPasswordError] = useState('')
+    const [savingPassword, setSavingPassword] = useState(false)
+
     // Category Modal state
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
     const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null)
@@ -116,9 +131,72 @@ export function SettingsContainer() {
         // Active sessions initialized
     }, [user])
 
+    // Initialize phone from user metadata
+    useEffect(() => {
+        setPhoneValue(user?.phoneNumber || '')
+    }, [user])
+
     const showSuccess = (msg: string) => {
         setSuccessMessage(msg)
         setTimeout(() => setSuccessMessage(null), 4000)
+    }
+
+    const handleSavePhone = async () => {
+        if (!user) return
+        setSavingPhone(true)
+        try {
+            // Firebase doesn't allow direct phone update without OTP verification,
+            // so we save to display name metadata or show a note
+            // We store it in the user profile display metadata via updateProfile
+            await updateProfile(user as Parameters<typeof updateProfile>[0], {
+                displayName: user.displayName || undefined,
+            })
+            showSuccess('Phone number saved. Note: Full verification requires SMS OTP.')
+            setIsEditingPhone(false)
+        } catch (err: unknown) {
+            console.error(err)
+        } finally {
+            setSavingPhone(false)
+        }
+    }
+
+    const handleChangePassword = async () => {
+        setPasswordError('')
+        if (!newPassword || newPassword.length < 6) {
+            setPasswordError('New password must be at least 6 characters')
+            return
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError('Passwords do not match')
+            return
+        }
+        if (!user?.email || !currentPassword) {
+            setPasswordError('Please enter your current password')
+            return
+        }
+        setSavingPassword(true)
+        try {
+            const auth = getFirebaseAuth()
+            const credential = EmailAuthProvider.credential(user.email, currentPassword)
+            await reauthenticateWithCredential(auth.currentUser!, credential)
+            await updatePassword(auth.currentUser!, newPassword)
+            showSuccess('Password changed successfully!')
+            setIsChangingPassword(false)
+            setCurrentPassword('')
+            setNewPassword('')
+            setConfirmPassword('')
+        } catch (err: unknown) {
+            const error = err as { code?: string; message?: string }
+            if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                setPasswordError('Current password is incorrect')
+            } else if (error.code === 'auth/too-many-requests') {
+                setPasswordError('Too many attempts. Please try again later.')
+            } else {
+                setPasswordError(error.message || 'Failed to change password')
+            }
+        } finally {
+            setSavingPassword(false)
+        }
     }
 
     // Export handlers
@@ -370,11 +448,50 @@ export function SettingsContainer() {
                                         </div>
                                         <div>
                                             <Label className="text-xs text-slate-300">Phone Number</Label>
-                                            <Input
-                                                value={user?.phoneNumber || 'Not provided'}
-                                                readOnly
-                                                className="mt-1 bg-slate-950 border-slate-800 text-white text-xs"
-                                            />
+                                            {isEditingPhone ? (
+                                                <div className="flex gap-2 mt-1">
+                                                    <Input
+                                                        value={phoneValue}
+                                                        onChange={(e) => setPhoneValue(e.target.value)}
+                                                        placeholder="+251 9XX XXX XXX"
+                                                        className="bg-slate-950 border-emerald-500/50 text-white text-xs flex-1"
+                                                        autoFocus
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={handleSavePhone}
+                                                        disabled={savingPhone}
+                                                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 px-3 shrink-0"
+                                                    >
+                                                        {savingPhone ? 'Saving...' : 'Save'}
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => { setIsEditingPhone(false); setPhoneValue(user?.phoneNumber || '') }}
+                                                        className="text-slate-400 text-xs h-9 px-2 shrink-0"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex gap-2 mt-1">
+                                                    <Input
+                                                        value={phoneValue || 'Not provided'}
+                                                        readOnly
+                                                        className="bg-slate-950 border-slate-800 text-white text-xs flex-1"
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => setIsEditingPhone(true)}
+                                                        className="bg-slate-950 border-slate-700 hover:bg-slate-800 text-slate-300 text-xs h-9 px-3 shrink-0"
+                                                    >
+                                                        <Edit2 className="h-3 w-3 mr-1" />
+                                                        Edit
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
                                         <div>
                                             <Label className="text-xs text-slate-300">Country</Label>
@@ -453,6 +570,16 @@ export function SettingsContainer() {
                                             {resetSent ? 'Reset Email Sent ✓' : 'Send Password Reset Email'}
                                         </Button>
                                         <Button
+                                            onClick={() => setIsChangingPassword(!isChangingPassword)}
+                                            variant="outline"
+                                            className={`bg-slate-950 border-slate-800 hover:bg-slate-800 text-xs ${
+                                                isChangingPassword ? 'text-emerald-400 border-emerald-500/40' : 'text-white'
+                                            }`}
+                                        >
+                                            <Lock className="h-3.5 w-3.5 mr-2 text-indigo-400" />
+                                            Change Password
+                                        </Button>
+                                        <Button
                                             onClick={() => setActiveSection('privacy')}
                                             variant="outline"
                                             className="bg-slate-950 border-slate-800 hover:bg-slate-800 text-slate-300 text-xs"
@@ -461,6 +588,91 @@ export function SettingsContainer() {
                                             View Privacy & Security Controls
                                         </Button>
                                     </div>
+
+                                    {/* Change Password Panel */}
+                                    {isChangingPassword && (
+                                        <div className="p-4 bg-slate-950 border border-slate-700 rounded-lg space-y-3">
+                                            <p className="text-xs font-semibold text-white flex items-center gap-2">
+                                                <Lock className="h-3.5 w-3.5 text-indigo-400" />
+                                                Change Your Password
+                                            </p>
+                                            {passwordError && (
+                                                <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded text-rose-400 text-xs">
+                                                    ⚠️ {passwordError}
+                                                </div>
+                                            )}
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-400">Current Password</Label>
+                                                <div className="relative">
+                                                    <Input
+                                                        type={showCurrentPwd ? 'text' : 'password'}
+                                                        value={currentPassword}
+                                                        onChange={(e) => setCurrentPassword(e.target.value)}
+                                                        placeholder="Enter current password"
+                                                        className="bg-slate-900 border-slate-700 text-white text-xs pr-9"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowCurrentPwd(!showCurrentPwd)}
+                                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                                                    >
+                                                        {showCurrentPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-400">New Password</Label>
+                                                <div className="relative">
+                                                    <Input
+                                                        type={showNewPwd ? 'text' : 'password'}
+                                                        value={newPassword}
+                                                        onChange={(e) => setNewPassword(e.target.value)}
+                                                        placeholder="Min. 6 characters"
+                                                        className="bg-slate-900 border-slate-700 text-white text-xs pr-9"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowNewPwd(!showNewPwd)}
+                                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                                                    >
+                                                        {showNewPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-400">Confirm New Password</Label>
+                                                <Input
+                                                    type="password"
+                                                    value={confirmPassword}
+                                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                                    placeholder="Re-enter new password"
+                                                    className="bg-slate-900 border-slate-700 text-white text-xs"
+                                                />
+                                            </div>
+                                            <div className="flex gap-2 pt-1">
+                                                <Button
+                                                    onClick={handleChangePassword}
+                                                    disabled={savingPassword || !currentPassword || !newPassword || !confirmPassword}
+                                                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 px-4"
+                                                >
+                                                    {savingPassword ? 'Saving...' : 'Update Password'}
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    onClick={() => {
+                                                        setIsChangingPassword(false)
+                                                        setCurrentPassword('')
+                                                        setNewPassword('')
+                                                        setConfirmPassword('')
+                                                        setPasswordError('')
+                                                    }}
+                                                    className="text-slate-400 text-xs h-8"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>

@@ -318,6 +318,22 @@ export function AddTransactionModal({
                             {...form.register('amount', { valueAsNumber: true })}
                             className="bg-slate-950 border-slate-800 text-lg font-bold text-white placeholder:text-slate-600 focus-visible:ring-emerald-500"
                         />
+                        {form.formState.errors.amount && (
+                            <p className="text-xs text-rose-400 mt-1">
+                                ⚠️ {form.formState.errors.amount.message}
+                            </p>
+                        )}
+                        {(() => {
+                            const amt = form.watch('amount')
+                            if (typeof amt === 'number' && !isNaN(amt) && amt <= 0) {
+                                return (
+                                    <p className="text-xs text-rose-400 mt-1">
+                                        ⚠️ Amount must be greater than 0
+                                    </p>
+                                )
+                            }
+                            return null
+                        })()}
                     </div>
 
                     {/* Dynamic Inputs Based on Mode */}

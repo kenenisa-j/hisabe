@@ -23,6 +23,7 @@ interface TransactionListProps {
     initialTransactions: ExtendedTransaction[]
     accounts: { id: string; name: string }[]
     categories: { id: string; name: string }[]
+    initialSearch?: string
 }
 
 type SortOrder = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'
@@ -38,10 +39,11 @@ export function TransactionList({
     initialTransactions,
     accounts,
     categories,
+    initialSearch = '',
 }: TransactionListProps) {
     const { settings } = useUserSettings()
     // Filter States
-    const [search, setSearch] = useState('')
+    const [search, setSearch] = useState(initialSearch)
     const [typeFilter, setTypeFilter] = useState<string>('all')
     const [accountFilter, setAccountFilter] = useState<string>('all')
     const [categoryFilter, setCategoryFilter] = useState<string>('all')
