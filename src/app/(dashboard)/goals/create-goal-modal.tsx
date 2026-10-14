@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createSavingsGoal } from '@/actions/savings-goal-actions'
@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Trophy, Loader2 } from 'lucide-react'
+import { Plus, Trophy, Loader2, AlertCircle } from 'lucide-react'
 
 const goalSchema = z.object({
     name: z.string().min(1, 'Goal name is required'),
@@ -40,7 +40,14 @@ export function CreateGoalModal() {
         },
     })
 
+    const currentTargetAmount = useWatch({ control: form.control, name: 'targetAmount' }) || 0
+
     const onSubmit = async (values: GoalFormValues) => {
+        if (values.targetAmount <= 0) {
+            setError('Target amount must be greater than 0 ETB. Negative numbers and zero are not allowed.')
+            return
+        }
+
         setLoading(true)
         setError('')
 
@@ -95,10 +102,17 @@ export function CreateGoalModal() {
                             <Input
                                 type="number"
                                 step="0.01"
+                                min="0.01"
                                 placeholder="0.00"
                                 {...form.register('targetAmount', { valueAsNumber: true })}
                                 className="bg-slate-950 border-slate-800 text-xs text-white"
                             />
+                            {currentTargetAmount <= 0 && (
+                                <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3 shrink-0" />
+                                    Must be &gt; 0
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-1.5">
@@ -113,10 +127,20 @@ export function CreateGoalModal() {
 
                     <Button
                         type="submit"
-                        disabled={loading}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs mt-2"
+                        disabled={loading || currentTargetAmount <= 0}
+                        className={`w-full font-medium text-xs mt-2 transition-all ${
+                            currentTargetAmount <= 0
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        }`}
                     >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Goal'}
+                        {loading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : currentTargetAmount <= 0 ? (
+                            'Enter Amount Greater Than 0'
+                        ) : (
+                            'Create Goal'
+                        )}
                     </Button>
                 </form>
             </DialogContent>

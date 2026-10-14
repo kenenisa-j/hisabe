@@ -23,7 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { HandCoins, CheckCircle2, Loader2, Building2 } from 'lucide-react'
+import { HandCoins, CheckCircle2, Loader2, Building2, AlertCircle } from 'lucide-react'
 
 interface RepaymentModalProps {
     debt: Debt
@@ -224,17 +224,28 @@ export function RepaymentModal({ debt, accounts }: RepaymentModalProps) {
                         <Input
                             type="number"
                             step="0.01"
+                            min="0.01"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                             className="bg-slate-950 border-slate-800 text-xs text-white"
                         />
+                        {parseFloat(amount) <= 0 && (
+                            <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3 shrink-0" />
+                                Repayment amount must be greater than 0 ETB (cannot be zero or negative).
+                            </p>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 pt-2">
                         <Button
                             type="submit"
-                            disabled={loading}
-                            className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs"
+                            disabled={loading || parseFloat(amount) <= 0}
+                            className={`font-medium text-xs transition-all ${
+                                parseFloat(amount) <= 0
+                                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                                    : 'bg-blue-600 hover:bg-blue-500 text-white'
+                            }`}
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Record Partial'}
                         </Button>

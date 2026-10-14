@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/providers/auth-provider'
+import { PWAInstallPrompt } from '@/components/mobile/pwa-install-prompt'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -38,10 +39,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <AuthProvider>
-      <html lang="en" className="theme-light" suppressHydrationWarning>
-        <body className={inter.className} suppressHydrationWarning>{children}</body>
-      </html>
-    </AuthProvider>
+    <html lang="en" className="theme-light" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
+        <AuthProvider>
+          {children}
+          <PWAInstallPrompt />
+        </AuthProvider>
+      </body>
+    </html>
   )
 }
